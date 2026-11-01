@@ -201,3 +201,11 @@
     });
   });
 })();
+
+// Installable app: register the service worker (pages stay network-first,
+// so updates are never stuck behind an old version).
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function() {
+    navigator.serviceWorker.register("sw.js").catch(function() {});
+  });
+}

@@ -51,3 +51,7 @@ Na pasta supabase/migrations, na ordem:
 ## Ainda falta decidir / mandar
 - Domínio da BRASA (ainda não escolhido).
 - Grupo e WhatsApp da loja (põe no admin, em Definições da loja, quando tiveres os links reais).
+
+## Instalar no telefone (aplicativo)
+
+A BRASA já é instalável: no telefone, abre o site no navegador e toca em "Adicionar à tela inicial" (ou "Instalar aplicativo"). O ícone é o hambúrguer branco sobre fundo preto, e o aplicativo abre em ecrã cheio, sem a barra do navegador. As páginas tentam sempre a rede primeiro, por isso uma versão nova nunca fica presa na versão velha.
