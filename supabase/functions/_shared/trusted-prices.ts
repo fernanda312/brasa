@@ -12,6 +12,12 @@ export const TRUSTED_PRICES: Record<string, number> = {
   "tacos-3": 420,
 };
 
+// FALLBACK ONLY, for the unconfigured cart preview (js/catalog.js mirrors
+// it as DEFAULT_DELIVERY_FEE_MT). This is NOT the server's fee source:
+// create-payment always reads delivery_fee_mt from site_settings (id = 1)
+// and fails honestly if it cannot — it never charges this fallback value.
+export const DEFAULT_DELIVERY_FEE_MT = 150;
+
 // Display names, so server-written order items keep the real product name
 // (the browser-sent name is never trusted for price, but the name itself
 // is only used for display in the order and receipt).

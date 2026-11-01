@@ -11,6 +11,11 @@ const PRODUCTS = [
   {id: "cali", slug: "cali", name: "Cali", category: "Cachorros", price_mt: 320, image_url: "images/photo-1550547660-d9450f859349.jpg", description: "Salsicha, carne al pastor, alface, tomate, queijo mozzarella, maionese"},
   {id: "tacos-3", slug: "tacos-3", name: "3 Tacos", category: "Tacos", price_mt: 420, image_url: "images/photo-1551504734-5ee1c4a1479b.jpg", description: "À escolha da carne, servidos com arroz e feijão. Inclui cebola e coentros"}
 ];
+// Default delivery fee (MT), used in the cart before the backend is linked.
+// Once configured, the cart reads site_settings.delivery_fee_mt instead,
+// and the payment function ALWAYS reads it from site_settings on the server.
+// The admin changes it in Admin > Definições > Taxa de entrega.
+const DEFAULT_DELIVERY_FEE_MT = 150;
 // Trusted price list, mirrored server-side in the payment Edge Function.
 const TRUSTED_PRICES = {};
 PRODUCTS.forEach(function(p){ if (p.price_mt !== null) TRUSTED_PRICES[p.id] = p.price_mt; });

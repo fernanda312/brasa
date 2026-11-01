@@ -108,6 +108,7 @@
         <label class="field-label" for="st-group">Link do grupo (formato de grupo; troque pelo link real)</label><input class="field" id="st-group">
         <label class="field-label" for="st-delay">Botão do grupo: mostrar depois de quantos segundos no site</label><input class="field" id="st-delay" type="number" min="10" step="1">
         <label class="field-label" for="st-scroll">Botão do grupo: mostrar a partir de que percentagem de scroll</label><input class="field" id="st-scroll" type="number" min="10" max="100" step="1">
+        <label class="field-label" for="st-fee">Taxa de entrega (MT) — o que o cliente paga a mais quando escolhe entrega ao domicílio; levantar no local não tem taxa</label><input class="field" id="st-fee" type="number" min="0" step="1">
         <div style="margin-top:16px"><button class="gradient-bg px-8 py-3 rounded-full text-white font-bold" type="submit">Guardar definições</button></div>
       </form>
       <div class="msg" id="st-msg" style="display:none"></div>
@@ -249,6 +250,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     document.getElementById("st-whatsapp").value = s.whatsapp_url || "";
     document.getElementById("st-delay").value = s.group_banner_delay_seconds || 90;
     document.getElementById("st-scroll").value = s.group_banner_scroll_percent || 70;
+    document.getElementById("st-fee").value = (s.delivery_fee_mt === null || s.delivery_fee_mt === undefined) ? 150 : s.delivery_fee_mt;
   }
   document.getElementById("texts-form").addEventListener("submit", async function(e){
     e.preventDefault();
@@ -280,11 +282,13 @@ document.addEventListener("DOMContentLoaded", async function(){
   document.getElementById("settings-form").addEventListener("submit", async function(e){
     e.preventDefault();
     try {
+      var feeVal = parseInt(document.getElementById("st-fee").value, 10);
       var row = {
         whatsapp_url: document.getElementById("st-whatsapp").value.trim(),
         whatsapp_group_url: document.getElementById("st-group").value.trim(),
         group_banner_delay_seconds: parseInt(document.getElementById("st-delay").value, 10) || 90,
-        group_banner_scroll_percent: parseInt(document.getElementById("st-scroll").value, 10) || 70
+        group_banner_scroll_percent: parseInt(document.getElementById("st-scroll").value, 10) || 70,
+        delivery_fee_mt: (Number.isFinite(feeVal) && feeVal >= 0) ? feeVal : 150
       };
       var res = await sb.from("site_settings").update(row).eq("id", 1);
       if (res.error) throw res.error;
@@ -311,7 +315,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     }).join("");
   }
   async function loadOrders(){
-    var r = await sb.from("orders").select("id, user_id, status, total_mt, phone, provider_reference, created_at").order("created_at", {ascending: false}).limit(50);
+    var r = await sb.from("orders").select("id, user_id, status, subtotal_mt, delivery_fee_mt, delivery_type, delivery_address, total_mt, phone, provider_reference, created_at").order("created_at", {ascending: false}).limit(50);
     var box = document.getElementById("order-list");
     if (r.error) { box.innerHTML = "<p>Não foi possível carregar as encomendas.</p>"; return; }
     if (!r.data.length) { box.innerHTML = "<p>Ainda não há encomendas.</p>"; return; }
@@ -325,7 +329,12 @@ document.addEventListener("DOMContentLoaded", async function(){
     var statusPt = {"pending_payment": "A aguardar pagamento", "paid": "Paga", "preparing": "A preparar", "delivered": "Entregue", "cancelled": "Cancelada"};
     box.innerHTML = ords.map(function(o){
       var bought = (itemsByOrder[o.id] || []).map(function(i){ return i.name + " × " + i.qty; }).join(", ") || "—";
-      return "<div class='p-card'><div class='p-info'><strong>Encomenda " + o.id.slice(0, 8) + "</strong><span class='p-meta'>" + (emailById[o.user_id] || o.user_id.slice(0, 8)) + " · " + (o.phone || "") + "</span><span class='p-meta'>Comprou: " + bought + "</span><span class='p-price'>" + (o.total_mt ? fmtMT(o.total_mt) : "—") + "</span> <span class='badge st-" + o.status + "'>" + (statusPt[o.status] || o.status) + "</span><span class='p-meta'>Ref: " + (o.provider_reference || "—") + "</span></div><div class='p-actions'><select class='field' data-status='" + o.id + "'><option value='pending_payment'>A aguardar pagamento</option><option value='paid'>Paga</option><option value='preparing'>A preparar</option><option value='delivered'>Entregue</option><option value='cancelled'>Cancelada</option></select></div></div>";
+      var deliveryLabel = o.delivery_type === "delivery" ? "Entrega ao domicílio" : (o.delivery_type === "pickup" ? "Levantar no local" : "—");
+      var addressLine = (o.delivery_type === "delivery" && o.delivery_address) ? "<span class='p-meta'>Morada de entrega: " + o.delivery_address + "</span>" : "";
+      var breakdown = (o.subtotal_mt !== null && o.subtotal_mt !== undefined)
+        ? "<span class='p-meta'>Subtotal: " + fmtMT(o.subtotal_mt) + " · Taxa de entrega: " + fmtMT(o.delivery_fee_mt || 0) + " · Total: " + (o.total_mt ? fmtMT(o.total_mt) : "—") + "</span>"
+        : "<span class='p-price'>" + (o.total_mt ? fmtMT(o.total_mt) : "—") + "</span>";
+      return "<div class='p-card'><div class='p-info'><strong>Encomenda " + o.id.slice(0, 8) + "</strong><span class='p-meta'>" + (emailById[o.user_id] || o.user_id.slice(0, 8)) + " · " + (o.phone || "") + "</span><span class='p-meta'>Comprou: " + bought + "</span><span class='p-meta'>Entrega: " + deliveryLabel + "</span>" + addressLine + breakdown + " <span class='badge st-" + o.status + "'>" + (statusPt[o.status] || o.status) + "</span><span class='p-meta'>Ref: " + (o.provider_reference || "—") + "</span></div><div class='p-actions'><select class='field' data-status='" + o.id + "'><option value='pending_payment'>A aguardar pagamento</option><option value='paid'>Paga</option><option value='preparing'>A preparar</option><option value='delivered'>Entregue</option><option value='cancelled'>Cancelada</option></select></div></div>";
     }).join("");
     box.querySelectorAll("[data-status]").forEach(function(sel){
       var id = sel.getAttribute("data-status");

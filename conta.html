@@ -71,7 +71,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     document.getElementById("auth-box").style.display = "none";
     document.getElementById("account-box").style.display = "block";
     document.getElementById("account-email").textContent = "Email: " + session.user.email;
-    var r = await window.brasa.supabase.from("orders").select("id, status, total_mt, created_at").eq("user_id", session.user.id).order("created_at", {ascending: false}).limit(20);
+    var r = await window.brasa.supabase.from("orders").select("id, status, subtotal_mt, delivery_fee_mt, delivery_type, total_mt, created_at").eq("user_id", session.user.id).order("created_at", {ascending: false}).limit(20);
     var box = document.getElementById("my-orders");
     if (r.error) { box.innerHTML = "<p>Não foi possível carregar as encomendas.</p>"; }
     else if (!r.data.length) { box.innerHTML = "<p>Ainda não tem encomendas.</p>"; }
@@ -84,7 +84,10 @@ document.addEventListener("DOMContentLoaded", async function(){
         var receipt = (o.status === "paid" || o.status === "preparing" || o.status === "delivered")
           ? "<br>Recibo: " + (o.total_mt ? fmtMT(o.total_mt) : "—") + ", pago por M-Pesa. <a href='chat.html'>Ver recibo no chat</a>"
           : "";
-        return "<p style='border-bottom:1px solid hsl(0,0%,25%);padding:12px 0'>Encomenda " + o.id.slice(0, 8) + " — " + (statusPt[o.status] || o.status) + "<br>" + bought + "<br>" + (o.total_mt ? fmtMT(o.total_mt) : "a confirmar") + receipt + "</p>";
+        var deliveryLine = "";
+        if (o.delivery_type === "delivery") deliveryLine = "<br>Entrega ao domicílio" + ((o.delivery_fee_mt || 0) > 0 ? " · Taxa de entrega: " + fmtMT(o.delivery_fee_mt) : "");
+        else if (o.delivery_type === "pickup") deliveryLine = "<br>Levantar no local";
+        return "<p style='border-bottom:1px solid hsl(0,0%,25%);padding:12px 0'>Encomenda " + o.id.slice(0, 8) + " — " + (statusPt[o.status] || o.status) + "<br>" + bought + "<br>" + (o.total_mt ? fmtMT(o.total_mt) : "a confirmar") + deliveryLine + receipt + "</p>";
       }).join("");
     }
     document.getElementById("btn-signout").onclick = function(){ window.brasa.signOut(); };

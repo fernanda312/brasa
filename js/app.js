@@ -58,6 +58,24 @@
         });
       });
     },
+    // Delivery fee: the site_settings value when configured, otherwise
+    // the DEFAULT_DELIVERY_FEE_MT preview constant. Never a client guess
+    // at payment time — the server reads site_settings itself.
+    getDeliveryFee: async function(){
+      if (!sb) return DEFAULT_DELIVERY_FEE_MT;
+      try {
+        var r = await sb.from("site_settings").select("delivery_fee_mt").eq("id", 1).maybeSingle();
+        if (r.data && r.data.delivery_fee_mt !== null && r.data.delivery_fee_mt !== undefined) return r.data.delivery_fee_mt;
+      } catch (e) {}
+      return DEFAULT_DELIVERY_FEE_MT;
+    },
+    cartSubtotal: function(){
+      var cart = window.brasa.getCart();
+      return cart.reduce(function(sum, item){
+        var p = productById(item.id);
+        return sum + (p ? p.price_mt * item.qty : 0);
+      }, 0);
+    },
     updateCartCount: function(){
       var n = window.brasa.getCart().reduce(function(s, i){ return s + i.qty; }, 0);
       document.querySelectorAll(".cart-count").forEach(function(el){ el.textContent = n; });

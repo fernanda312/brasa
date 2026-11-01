@@ -4,7 +4,11 @@
 // and in README.md, never in customer copy.
 // Behaviour:
 //  * requires a signed-in user and an order belonging to that user;
-//  * recalculates the total server-side from TRUSTED_PRICES;
+//  * recalculates the total server-side from TRUSTED_PRICES, plus the
+//    delivery fee read from site_settings (id = 1) for delivery orders;
+//    pickup orders pay no fee. The fee is NEVER taken from the browser:
+//    if the settings read fails or the fee is missing/invalid, the
+//    function returns 500 and creates no payment.
 //  * rejects unpriced items with 400 (they cannot be paid online);
 //  * returns 503 — never a fake success — when the payment secrets are missing;
 //  * M-PESA ONLY, via direct STK push: POST {base}/charges with the M-Pesa
@@ -75,7 +79,7 @@ Deno.serve(async (req: Request) => {
   if (!user) return json({ error: "Sign-in required." }, 401);
   const supabase = createClient(supabaseUrl, serviceKey);
 
-  let body: { order_id?: string; phone?: string; items?: Array<{ id?: string; product_id?: string; qty: number }> };
+  let body: { order_id?: string; phone?: string; items?: Array<{ id?: string; product_id?: string; qty: number }>; delivery_type?: string; delivery_address?: string | null };
   try {
     body = await req.json();
   } catch {
@@ -94,6 +98,18 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Enter a valid M-Pesa number (84 or 85)." }, 400);
   }
 
+  // Delivery choice: 'delivery' pays the site_settings fee and needs an
+  // address; 'pickup' pays no fee and needs no address. Anything else is
+  // rejected — the browser's choice is validated, never trusted blindly.
+  const deliveryType = body.delivery_type ?? "pickup";
+  if (deliveryType !== "delivery" && deliveryType !== "pickup") {
+    return json({ error: "Invalid delivery choice." }, 400);
+  }
+  const deliveryAddress = deliveryType === "delivery" ? String(body.delivery_address ?? "").trim() : null;
+  if (deliveryType === "delivery" && !deliveryAddress) {
+    return json({ error: "A delivery address is required for home delivery." }, 400);
+  }
+
   // The order must belong to the caller and still be unpaid.
   const { data: order, error: orderError } = await supabase
     .from("orders")
@@ -107,16 +123,40 @@ Deno.serve(async (req: Request) => {
     return json({ error: "This order is no longer pending payment." }, 400);
   }
 
-  let total: number;
+  let subtotal: number;
   let lines: Array<{ product_id: string; qty: number; unit_price_mt: number }>;
   try {
-    ({ total, lines } = recalculateTotal(body.items));
+    ({ total: subtotal, lines } = recalculateTotal(body.items));
   } catch (e) {
     return json({ error: (e as Error).message }, 400);
   }
 
-  // Persist the server-calculated total and the priced lines.
-  await supabase.from("orders").update({ total_mt: total }).eq("id", order.id);
+  // Delivery fee: read from site_settings, never from the browser, never
+  // guessed. If the row or the fee is missing/invalid, stop honestly
+  // with 500 — no payment is created and nothing is charged.
+  let deliveryFee = 0;
+  if (deliveryType === "delivery") {
+    const { data: settings, error: settingsError } = await supabase
+      .from("site_settings")
+      .select("delivery_fee_mt")
+      .eq("id", 1)
+      .maybeSingle();
+    const fee = settings?.delivery_fee_mt as unknown;
+    if (settingsError || !settings || typeof fee !== "number" || !Number.isFinite(fee) || fee < 0 || Math.floor(fee) !== fee) {
+      return json({ error: "The delivery fee is not configured yet. Your order is saved as pending and has not been charged." }, 500);
+    }
+    deliveryFee = fee;
+  }
+  const total = subtotal + deliveryFee;
+
+  // Persist the server-calculated breakdown and the priced lines.
+  await supabase.from("orders").update({
+    subtotal_mt: subtotal,
+    delivery_fee_mt: deliveryFee,
+    total_mt: total,
+    delivery_type: deliveryType,
+    delivery_address: deliveryAddress,
+  }).eq("id", order.id);
   await supabase.from("order_items").delete().eq("order_id", order.id);
   await supabase.from("order_items").insert(
     lines.map((l) => ({ order_id: order.id, product_id: l.product_id, name: PRODUCT_NAMES[l.product_id] ?? l.product_id, qty: l.qty, unit_price_mt: l.unit_price_mt })),
@@ -192,6 +232,9 @@ Deno.serve(async (req: Request) => {
   return json({
     ok: true,
     order_id: order.id,
+    subtotal_mt: subtotal,
+    delivery_fee_mt: deliveryFee,
+    delivery_type: deliveryType,
     total_mt: total,
     provider_reference: reference,
     provider_status: (data.status as string) ?? null,

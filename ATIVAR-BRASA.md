@@ -7,7 +7,7 @@ Nada disto usa a conta de outro site. Tudo é só da BRASA.
 - Abrir supabase.com e criar um projeto novo com o nome BRASA.
 - Guardar o endereço do projeto (Project URL) e a chave pública (a chave que pode ser partilhada, nunca a chave secreta).
 
-## 2. Correr as 6 migrações, por esta ordem
+## 2. Correr as 7 migrações, por esta ordem
 Na pasta supabase/migrations, na ordem:
 1. 20261101000001_brasa_core.sql
 2. 20261101000002_brasa_rls.sql
@@ -15,6 +15,7 @@ Na pasta supabase/migrations, na ordem:
 4. 20261101000004_brasa_storage.sql
 5. 20261101000005_brasa_delivery.sql
 6. 20261101000006_brasa_chat_stock_whatsapp.sql
+7. 20261101000007_brasa_fees.sql (taxa de entrega — ver abaixo)
 
 ## 3. Conta e admin
 - Desligar "Confirm email" no Supabase (senão a conta não entra).
@@ -35,6 +36,12 @@ Na pasta supabase/migrations, na ordem:
 - Apontar o aviso de pagamento (webhook) do painel de pagamento para:
   <Project URL>/functions/v1/zumbopay-webhook
 - Depois disto, a Muse liga o site ao projeto e testa.
+
+## Taxa de entrega — como funciona
+- O cliente paga a encomenda e a taxa de entrega juntas, num só pagamento M-Pesa, com a conta clara no carrinho: Subtotal + Taxa de entrega = Total a pagar.
+- No carrinho há 2 escolhas: "Entrega ao domicílio" (soma a taxa e pede a morada, que é obrigatória) ou "Levantar no local" (sem taxa, sem morada).
+- A taxa começa em 150 MT (migração 0007). O admin muda-a em Admin > Definições da loja > Taxa de entrega, e o site passa logo a usar o novo valor — não é preciso publicar o site de novo.
+- O servidor recalcula sempre tudo: soma os preços de confiança, lê a taxa nas definições e só depois pede o pagamento. Se a taxa não estiver configurada, o pagamento não é criado e a encomenda fica pendente, sem cobrança. O cliente nunca pode mudar a taxa a partir do telefone.
 
 ## 6. Teste final
 - Teste pequeno com M-Pesa: comprar 1 produto barato, confirmar
