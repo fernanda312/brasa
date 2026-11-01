@@ -1,7 +1,7 @@
 // BRASA — service worker. Pages always try the network first (so a new
 // published version is never stuck behind an old cache); images, CSS and
 // JS fall back to the cache so the app still opens offline.
-var CACHE = "brasa-v1";
+var CACHE = "brasa-v2";
 var CORE = [
   "index.html", "cardapio.html", "conta.html", "carrinho.html",
   "chat.html", "admin.html", "manifest.json",
