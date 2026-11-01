@@ -1,22 +1,29 @@
-/* BRASA — override de cores: degradê vermelho escuro para preto.
-   O ficheiro Tailwind original fica intacto; isto só muda as cores. */
+/* BRASA — override de cores: degradê vermelho vivo para vermelho escuro e preto.
+   Carregado DEPOIS do Tailwind original, por isso estas cores ganham. */
 :root{
-  --primary: hsl(0, 72%, 38%);
+  --primary: hsl(0, 84%, 48%);
   --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(0, 80%, 30%);
+  --secondary: hsl(0, 80%, 38%);
   --secondary-foreground: hsl(0, 0%, 100%);
-  --accent: hsl(0, 68%, 46%);
+  --accent: hsl(0, 85%, 58%);
   --accent-foreground: hsl(0, 0%, 100%);
-  --ring: hsl(0, 72%, 38%);
-  --sidebar-primary: hsl(0, 72%, 38%);
-  --sidebar-accent: hsl(0, 68%, 46%);
+  --ring: hsl(0, 84%, 48%);
+  --sidebar-primary: hsl(0, 84%, 48%);
+  --sidebar-accent: hsl(0, 85%, 58%);
 }
-.gradient-bg{background:linear-gradient(135deg,#8b0000,#000)!important}
-.gradient-text{background:linear-gradient(135deg,#ff5a5a,#c81e1e,#7f1d1d);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-/* A logo é preta sem fundo; no tema escuro ela só se vê sobre branco. */
-.logo-badge{background:#fff;border-radius:999px;padding:6px 12px;display:inline-flex;align-items:center}
-.logo-badge img{height:96px;width:auto}
-footer .logo-badge img{height:64px;width:auto}
+.gradient-bg{background:linear-gradient(135deg,#e0311a 0%,#8b0000 55%,#000 100%)!important;color:#fff!important}
+.gradient-text{background:linear-gradient(135deg,#ff7a6b,#e0311a,#8b0000);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.text-primary-foreground{color:#fff!important}
+.text-accent-foreground{color:#fff!important}
+/* Logo: pequena e discreta, sem fundo. A logo é preta, por isso no tema
+   escuro aparece em branco (a mesma forma, só invertida), sem selo branco. */
+.logo-badge{background:transparent!important;padding:0!important;display:inline-flex;align-items:center}
+.logo-badge img{height:44px!important;width:auto!important;filter:invert(1)}
+footer .logo-badge img{height:40px!important}
+/* Fotos de hambúrguer nos cards do menu, em vez de símbolos. */
+.menu-photo{width:96px;height:96px;border-radius:50%;object-fit:cover;margin:0 auto 16px;display:block;border:2px solid #e0311a}
+/* Preços sem partir em duas linhas no telemóvel. */
+span[data-testid^="item-price"]{white-space:nowrap;text-align:right}
 /* Vídeo hero: ocupa o hero inteiro, sem player, sem controlos. */
 .hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 #mobile-menu a{display:block;padding:12px 0}
