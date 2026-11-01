@@ -55,6 +55,21 @@
       });
       return unit * item.qty;
     },
+    // Confirmation bar after adding: what was added, and a clear way
+    // to the cart — nobody is left wondering where the item went.
+    showAddedToast: function(name){
+      var old = document.getElementById("added-toast");
+      if (old) old.remove();
+      var bar = document.createElement("div");
+      bar.id = "added-toast";
+      bar.className = "added-toast";
+      bar.innerHTML = "<span style='flex:1'>✓ " + name + " no carrinho</span>" +
+        "<a href='carrinho.html' class='gradient-bg' style='padding:10px 18px;border-radius:999px;color:#fff;font-weight:700;text-decoration:none;white-space:nowrap'>Ver carrinho</a>" +
+        "<button type='button' style='background:none;border:none;color:#bbb;font-size:22px;cursor:pointer' aria-label='Fechar'>×</button>";
+      bar.querySelector("button").onclick = function(){ bar.remove(); };
+      document.body.appendChild(bar);
+      setTimeout(function(){ bar.remove(); }, 5000);
+    },
     // Customizer sheet: what the dish comes with, extras, removals,
     // observations and quantity — then it goes to the cart.
     openCustomizer: function(id){
@@ -106,7 +121,7 @@
         if (obs) notes.push(obs);
         var added = await window.brasa.requireAccountForCart(id, qty, {extras: extras, note: notes.join("; ")});
         sheet.remove();
-        if (added) location.href = "carrinho.html";
+        if (added) window.brasa.showAddedToast(p.name);
       };
     },
     // Nobody adds to the cart without an account. Without a session,
@@ -142,11 +157,7 @@
             return;
           }
           window.brasa.requireAccountForCart(pid, 1).then(function(added){
-            if (added) {
-              var old = btn.textContent;
-              btn.textContent = "Adicionado!";
-              setTimeout(function(){ btn.textContent = old; }, 1200);
-            }
+            if (added && prod) window.brasa.showAddedToast(prod.name);
           });
         });
       });

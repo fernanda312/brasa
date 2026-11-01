@@ -20,13 +20,13 @@
 <main class="app-wrap">
   <h1 class="gradient-text" style="font-size:clamp(36px,5vw,56px);font-weight:700;text-align:center;margin:0">Cardápio</h1>
   <p style="text-align:center">Hambúrgueres na brasa, com ingredientes frescos. Escolhe, adiciona e paga por M-Pesa.</p>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:24px 0">
-    <button class="btn-outline filter-btn" data-filter="" type="button">Todos</button>
-    <button class="btn-outline filter-btn" data-filter="Hambúrgueres da Brasa" type="button">Hambúrgueres da Brasa</button>
-    <button class="btn-outline filter-btn" data-filter="Cachorros" type="button">Cachorros</button>
-    <button class="btn-outline filter-btn" data-filter="Tacos" type="button">Tacos</button>
-    <button class="btn-outline filter-btn" data-filter="Bebidas" type="button">Bebidas</button>
-    <button class="btn-outline filter-btn" data-filter="Acompanhamentos" type="button">Acompanhamentos</button>
+  <div class="filter-row">
+    <button class="filter-chip on" data-filter="" type="button">Todos</button>
+    <button class="filter-chip" data-filter="Hambúrgueres da Brasa" type="button">Hambúrgueres da Brasa</button>
+    <button class="filter-chip" data-filter="Cachorros" type="button">Cachorros</button>
+    <button class="filter-chip" data-filter="Tacos" type="button">Tacos</button>
+    <button class="filter-chip" data-filter="Bebidas" type="button">Bebidas</button>
+    <button class="filter-chip" data-filter="Acompanhamentos" type="button">Acompanhamentos</button>
   </div>
   <div id="cardapio-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:24px"></div>
 </main>
@@ -43,8 +43,12 @@ document.addEventListener("DOMContentLoaded", function(){
     window.brasa.bindAddButtons();
   }
   render("");
-  document.querySelectorAll(".filter-btn").forEach(function(btn){
-    btn.addEventListener("click", function(){ render(btn.getAttribute("data-filter")); });
+  document.querySelectorAll(".filter-chip").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".filter-chip").forEach(function(b){ b.classList.remove("on"); });
+      btn.classList.add("on");
+      render(btn.getAttribute("data-filter"));
+    });
   });
 });
 </script>

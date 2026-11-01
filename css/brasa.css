@@ -92,6 +92,17 @@ html,body{overflow-x:hidden}
 .sheet-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .sheet-check{display:flex;gap:8px;align-items:center;color:#ddd;font-size:14px;line-height:1.5}
 .sheet-check input{width:auto;accent-color:#e0311a}
+/* Filtros do cardápio: uma fila de chips que desliza, como nos
+   aplicativos. O chip ativo é o degradê; os outros são escuros e lisos.
+   Nada de letras espaçadas nem botões gigantes a partir a fila. */
+.filter-row{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 14px;margin:24px 0 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.filter-row::-webkit-scrollbar{display:none}
+.filter-chip{flex-shrink:0;background:#1a1a1a;border:1px solid #2a2a2a;color:#ddd;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.filter-chip.on{background:linear-gradient(135deg,#e0311a,#000);color:#fff;border-color:transparent}
+/* Barra de confirmação ao adicionar: fica por cima do rodapé, sem tapar
+   os botões flutuantes da direita. */
+.added-toast{position:fixed;left:16px;right:88px;bottom:16px;z-index:90;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:14px 16px;display:flex;gap:12px;align-items:center;color:#fff;font-size:15px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+@media(min-width:769px){.added-toast{left:50%;right:auto;transform:translateX(-50%);width:auto;min-width:380px}}
 /* Botão flutuante do WhatsApp: verde, por cima do botão do chat. */
 .wa-fab{position:fixed;right:20px;bottom:92px;width:56px;height:56px;border-radius:50%;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:40;text-decoration:none}
 @media (max-width:768px){.wa-fab{bottom:156px;right:16px}}
