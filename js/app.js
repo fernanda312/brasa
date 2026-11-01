@@ -166,6 +166,10 @@
       if (storeText && s.store_text) storeText.textContent = s.store_text;
       var howText = document.querySelector("[data-how-text]");
       if (howText && s.how_text) howText.textContent = s.how_text;
+      var contactText = document.querySelector("[data-contact-text]");
+      if (contactText && s.contact_text) contactText.textContent = s.contact_text;
+      var ctaText = document.querySelector("[data-cta-text]");
+      if (ctaText && s.cta_text) ctaText.textContent = s.cta_text;
       var deliveryText = document.querySelector("[data-delivery-text]");
       if (deliveryText && s.delivery_text) deliveryText.textContent = s.delivery_text;
       var trustText = document.querySelector("[data-trust-text]");

@@ -42,6 +42,7 @@
       <button type="button" data-tab="orders">Encomendas</button>
       <button type="button" data-tab="customers">Clientes</button>
       <button type="button" data-tab="chats">Chats</button>
+      <button type="button" data-tab="points">Pontos de encomenda</button>
       <button type="button" data-tab="settings">Definições da loja</button>
     </div>
     <div id="tab-products" class="admin-card">
@@ -72,6 +73,8 @@
         <label class="field-label" for="s-delivery-text">Texto de entrega</label><textarea class="field" id="s-delivery-text" rows="3"></textarea>
         <label class="field-label" for="s-trust-text">Texto de confiança (loja real, pagamento, recibo)</label><textarea class="field" id="s-trust-text" rows="3"></textarea>
         <label class="field-label" for="s-promo-text">Texto das promoções (o que passa na faixa, sem preços inventados)</label><input class="field" id="s-promo-text">
+        <label class="field-label" for="s-contact-text">Texto do contacto (intro da secção de pontos)</label><textarea class="field" id="s-contact-text" rows="2"></textarea>
+        <label class="field-label" for="s-cta-text">Texto do apelo final (antes do botão Encomendar)</label><textarea class="field" id="s-cta-text" rows="2"></textarea>
         <label class="field-label" for="s-logo-file">Logótipo (ficheiro)</label><input class="field" id="s-logo-file" type="file" accept="image/*">
         <label class="field-label" for="s-hero-video-file">Vídeo do hero (ficheiro, até 50 MB — o vídeo atual fica até ser substituído)</label><input class="field" id="s-hero-video-file" type="file" accept="video/*">
         <label class="field-label" for="s-promo1-file">Foto da promoção 1 (ficheiro)</label><input class="field" id="s-promo1-file" type="file" accept="image/*">
@@ -100,6 +103,19 @@
         <label class="field-label" for="admin-reply-file">Anexo (imagem, vídeo, áudio ou ficheiro, até 5 MB)</label><input class="field" id="admin-reply-file" type="file" accept="image/*,video/*,audio/*,application/pdf">
         <div style="margin-top:12px"><button class="gradient-bg px-8 py-3 rounded-full text-white font-bold" type="submit">Enviar resposta</button></div>
       </form>
+    </div>
+    <div id="tab-points" class="admin-card" style="display:none">
+      <h2 class="admin-section-title">Pontos de encomenda</h2>
+      <p style="color:#ddd">Os pontos que o cliente vê na página inicial. Escolhe o ponto mais perto e encomenda no aplicativo — não há "como chegar", isto é encomenda, não visita.</p>
+      <div id="point-list"></div>
+      <form id="point-form" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <input class="field" id="pt-name" placeholder="Nome (ex.: BRASA Baixa)" style="flex:2;min-width:160px" required>
+        <input class="field" id="pt-area" placeholder="Zona (ex.: Baixa)" style="flex:1;min-width:120px" required>
+        <input class="field" id="pt-city" placeholder="Cidade (ex.: Maputo)" style="flex:1;min-width:120px" required>
+        <input class="field" id="pt-hours" placeholder="Horário (ex.: 11h – 21h)" style="flex:1;min-width:120px" required>
+        <button class="gradient-bg px-6 py-3 rounded-full text-white font-bold" type="submit">Adicionar ponto</button>
+      </form>
+      <div class="msg" id="pt-msg" style="display:none"></div>
     </div>
     <div id="tab-settings" class="admin-card" style="display:none">
       <h2 class="admin-section-title">Definições da loja</h2>
@@ -156,12 +172,13 @@ document.addEventListener("DOMContentLoaded", async function(){
     btn.onclick = function(){
       document.querySelectorAll("[data-tab]").forEach(function(b){ b.classList.remove("on"); });
       btn.classList.add("on");
-      ["products", "texts", "orders", "customers", "chats", "settings"].forEach(function(t){
+      ["products", "texts", "orders", "customers", "chats", "points", "settings"].forEach(function(t){
         document.getElementById("tab-" + t).style.display = (t === btn.getAttribute("data-tab")) ? "block" : "none";
       });
       if (btn.getAttribute("data-tab") === "orders") loadOrders();
       if (btn.getAttribute("data-tab") === "customers") loadCustomers();
       if (btn.getAttribute("data-tab") === "chats") loadChats();
+      if (btn.getAttribute("data-tab") === "points") loadPoints();
     };
   });
   async function uploadFile(bucket, file, maxMb){
@@ -260,6 +277,8 @@ document.addEventListener("DOMContentLoaded", async function(){
     document.getElementById("s-delivery-text").value = s.delivery_text || "";
     document.getElementById("s-trust-text").value = s.trust_text || "";
     document.getElementById("s-promo-text").value = s.promo_text || "";
+    document.getElementById("s-contact-text").value = s.contact_text || "";
+    document.getElementById("s-cta-text").value = s.cta_text || "";
     document.getElementById("st-group").value = s.whatsapp_group_url || "";
     document.getElementById("st-whatsapp").value = s.whatsapp_url || "";
     document.getElementById("st-delay").value = s.group_banner_delay_seconds || 90;
@@ -283,7 +302,9 @@ document.addEventListener("DOMContentLoaded", async function(){
         how_text: document.getElementById("s-how-text").value.trim(),
         delivery_text: document.getElementById("s-delivery-text").value.trim(),
         trust_text: document.getElementById("s-trust-text").value.trim(),
-        promo_text: document.getElementById("s-promo-text").value.trim()
+        promo_text: document.getElementById("s-promo-text").value.trim(),
+        contact_text: document.getElementById("s-contact-text").value.trim(),
+        cta_text: document.getElementById("s-cta-text").value.trim()
       };
       if (logo) row.logo_url = await uploadFile("brasa-media", logo, 5);
       if (heroVideo) row.hero_video_url = await uploadFile("brasa-media", heroVideo, 50);
@@ -475,6 +496,37 @@ document.addEventListener("DOMContentLoaded", async function(){
       b.onclick = async function(){ if (!confirm("Apagar esta zona?")) return; await sb.from("delivery_zones").delete().eq("id", b.getAttribute("data-zone-del")); loadZones(); };
     });
   }
+  async function loadPoints(){
+    var box = document.getElementById("point-list");
+    var r = await sb.from("pickup_points").select("id, name, area, city, hours, active").order("sort_order", {ascending: true});
+    if (r.error) { box.innerHTML = "<p>Os pontos ainda não existem na base de dados — corre a migração 0009 no Supabase.</p>"; return; }
+    if (!r.data.length) { box.innerHTML = "<p>Ainda não há pontos. Adiciona o primeiro abaixo.</p>"; return; }
+    box.innerHTML = r.data.map(function(pt){
+      return "<div class='p-card'><div class='p-info'><strong>" + pt.name + "</strong><span class='p-meta'>" + pt.area + " · " + pt.city + " · " + pt.hours + " · " + (pt.active ? "Ativo" : "Desligado") + "</span></div><div class='p-actions'><button class='btn-outline' data-pt-toggle='" + pt.id + "' data-active='" + (pt.active ? 1 : 0) + "' type='button'>" + (pt.active ? "Desligar" : "Ligar") + "</button><button class='btn-outline' data-pt-del='" + pt.id + "' type='button'>Apagar</button></div></div>";
+    }).join("");
+    box.querySelectorAll("[data-pt-toggle]").forEach(function(b){
+      b.onclick = async function(){ await sb.from("pickup_points").update({active: b.getAttribute("data-active") !== "1"}).eq("id", b.getAttribute("data-pt-toggle")); loadPoints(); };
+    });
+    box.querySelectorAll("[data-pt-del]").forEach(function(b){
+      b.onclick = async function(){ if (!confirm("Apagar este ponto?")) return; await sb.from("pickup_points").delete().eq("id", b.getAttribute("data-pt-del")); loadPoints(); };
+    });
+  }
+  document.getElementById("point-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var name = document.getElementById("pt-name").value.trim();
+    var area = document.getElementById("pt-area").value.trim();
+    var city = document.getElementById("pt-city").value.trim();
+    var hours = document.getElementById("pt-hours").value.trim();
+    if (!name || !area || !city || !hours) return;
+    var res = await sb.from("pickup_points").insert({name: name, area: area, city: city, hours: hours, active: true});
+    if (res.error) { show("pt-msg", res.error.message, true); return; }
+    document.getElementById("pt-name").value = "";
+    document.getElementById("pt-area").value = "";
+    document.getElementById("pt-city").value = "";
+    document.getElementById("pt-hours").value = "";
+    show("pt-msg", "Ponto adicionado.", false);
+    loadPoints();
+  });
   document.getElementById("zone-form").addEventListener("submit", async function(e){
     e.preventDefault();
     var name = document.getElementById("zone-name").value.trim();

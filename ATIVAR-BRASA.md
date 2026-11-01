@@ -67,3 +67,10 @@ A BRASA já é instalável: no telefone, abre o site no navegador e toca em "Adi
   para colar no editor do painel é `supabase/functions-deploy/create-payment.ts`.
 - Depois disto: zonas e tempos editam-se em Admin > Definições; a foto do
   cliente carrega-se em Conta; o rastreio aparece em Conta > Histórico.
+
+## Atualização 2026-11-01 — pontos de encomenda
+- Correr a migração `supabase/migrations/20261101000009_brasa_points.sql`
+  (depois da 0008). Cria a tabela `pickup_points` com 6 pontos iniciais
+  (Baixa, Polana, Costa do Sol, Zimpeto, Matola Cidade, Machava) e os
+  textos de contacto/CTA em `site_settings`. Pontos editam-se em
+  Admin > Pontos de encomenda; textos, em Admin > Textos.
