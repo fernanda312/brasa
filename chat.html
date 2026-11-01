@@ -29,7 +29,7 @@
     <div class="chatlog" id="chatlog"><p style="color:#777">A carregar a conversa…</p></div>
     <form class="chatbox" id="chatform">
       <input class="field" type="text" id="chat-text" placeholder="Escreva a sua mensagem…" autocomplete="off">
-      <input type="file" id="chat-file" accept="image/*,video/*,audio/*,application/pdf" style="max-width:220px">
+      <input type="file" id="chat-file" accept="image/*,video/*,audio/*,application/pdf" style="width:100%;color:#ddd">
       <button class="gradient-bg px-6 py-3 rounded-full text-white font-bold" type="submit">Enviar</button>
       <button class="btn-outline" id="audio-btn" type="button">Gravar áudio</button>
     </form>
@@ -42,7 +42,7 @@
 document.addEventListener("DOMContentLoaded", async function(){
   var log = document.getElementById("chatlog"), msg = document.getElementById("chat-msg");
   // Chat only after account: intent → account → chat, no step is lost.
-  if (!window.brasa.configured) { log.innerHTML = "<p>O chat ainda está a ser ligado pela loja.</p>"; return; }
+  if (!window.brasa.configured) { log.innerHTML = "<p>O chat ainda está a ser ligado pela loja.</p>"; document.getElementById("chat-text").disabled = true; document.getElementById("chat-text").placeholder = "O chat ainda está a ser ligado pela loja."; document.getElementById("chat-file").disabled = true; document.querySelector("#chatform button[type=submit]").disabled = true; document.getElementById("audio-btn").disabled = true; return; }
   var session = await window.brasa.getSession();
   if (!session) {
     window.brasa.savePending("chat", "chat.html");
