@@ -122,6 +122,7 @@
       <div class="admin-note"><strong>Pagamentos M-Pesa</strong><br>As credenciais de pagamento NÃO ficam aqui nem no código. Ficam só nos segredos das Edge Functions no Supabase, com estes 3 nomes: ZUMBO_API_KEY, ZUMBO_MERCHANT_ID e ZUMBO_WEBHOOK_SECRET. Sem elas, o pagamento mostra aviso e não finge pagar.</div>
       <form id="settings-form">
         <label class="field-label" for="st-whatsapp">Link do WhatsApp (troque pelo link real — o comprador muda isto aqui)</label><input class="field" id="st-whatsapp" placeholder="https://wa.me/25884xxxxxxx">
+        <label class="field-label" for="st-phone">Telefone / WhatsApp a mostrar no contacto (o comprador muda isto aqui)</label><input class="field" id="st-phone" placeholder="+258 84 000 0000">
         <label class="field-label" for="st-group">Link do grupo (formato de grupo; troque pelo link real)</label><input class="field" id="st-group">
         <label class="field-label" for="st-delay">Botão do grupo: mostrar depois de quantos segundos no site</label><input class="field" id="st-delay" type="number" min="10" step="1">
         <label class="field-label" for="st-scroll">Botão do grupo: mostrar a partir de que percentagem de scroll</label><input class="field" id="st-scroll" type="number" min="10" max="100" step="1">
@@ -281,6 +282,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     document.getElementById("s-cta-text").value = s.cta_text || "";
     document.getElementById("st-group").value = s.whatsapp_group_url || "";
     document.getElementById("st-whatsapp").value = s.whatsapp_url || "";
+    document.getElementById("st-phone").value = s.contact_phone || "";
     document.getElementById("st-delay").value = s.group_banner_delay_seconds || 90;
     document.getElementById("st-scroll").value = s.group_banner_scroll_percent || 70;
     document.getElementById("st-fee").value = (s.delivery_fee_mt === null || s.delivery_fee_mt === undefined) ? 150 : s.delivery_fee_mt;
@@ -321,6 +323,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     try {
       var feeVal = parseInt(document.getElementById("st-fee").value, 10);
       var row = {
+        contact_phone: document.getElementById("st-phone").value.trim(),
         whatsapp_url: document.getElementById("st-whatsapp").value.trim(),
         whatsapp_group_url: document.getElementById("st-group").value.trim(),
         group_banner_delay_seconds: parseInt(document.getElementById("st-delay").value, 10) || 90,
@@ -355,7 +358,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     }).join("");
   }
   async function loadOrders(){
-    var r = await sb.from("orders").select("id, user_id, status, subtotal_mt, delivery_fee_mt, delivery_type, delivery_zone_name, delivery_address, total_mt, phone, provider_reference, created_at").order("created_at", {ascending: false}).limit(50);
+    var r = await sb.from("orders").select("id, user_id, status, subtotal_mt, delivery_fee_mt, delivery_type, delivery_zone_name, delivery_address, customer_note, total_mt, phone, provider_reference, created_at").order("created_at", {ascending: false}).limit(50);
     var box = document.getElementById("order-list");
     if (r.error) { box.innerHTML = "<p>Não foi possível carregar as encomendas.</p>"; return; }
     if (!r.data.length) { box.innerHTML = "<p>Ainda não há encomendas.</p>"; return; }
@@ -374,7 +377,7 @@ document.addEventListener("DOMContentLoaded", async function(){
       var breakdown = (o.subtotal_mt !== null && o.subtotal_mt !== undefined)
         ? "<span class='p-meta'>Subtotal: " + fmtMT(o.subtotal_mt) + " · Taxa de entrega: " + fmtMT(o.delivery_fee_mt || 0) + " · Total: " + (o.total_mt ? fmtMT(o.total_mt) : "—") + "</span>"
         : "<span class='p-price'>" + (o.total_mt ? fmtMT(o.total_mt) : "—") + "</span>";
-      return "<div class='p-card'><div class='p-info'><strong>Encomenda " + o.id.slice(0, 8) + "</strong><span class='p-meta'>" + (emailById[o.user_id] || o.user_id.slice(0, 8)) + " · " + (o.phone || "") + "</span><span class='p-meta'>Comprou: " + bought + "</span><span class='p-meta'>Entrega: " + deliveryLabel + "</span>" + addressLine + breakdown + " <span class='badge st-" + o.status + "'>" + (statusPt[o.status] || o.status) + "</span><span class='p-meta'>Ref: " + (o.provider_reference || "—") + "</span></div><div class='p-actions'><select class='field' data-status='" + o.id + "'><option value='pending_payment'>A aguardar pagamento</option><option value='paid'>Paga</option><option value='preparing'>A preparar</option><option value='on_the_way'>A caminho</option><option value='delivered'>Entregue</option><option value='cancelled'>Cancelada</option></select></div></div>";
+      return "<div class='p-card'><div class='p-info'><strong>Encomenda " + o.id.slice(0, 8) + "</strong><span class='p-meta'>" + (emailById[o.user_id] || o.user_id.slice(0, 8)) + " · " + (o.phone || "") + "</span><span class='p-meta'>Comprou: " + bought + "</span><span class='p-meta'>Entrega: " + deliveryLabel + "</span>" + addressLine + breakdown + " <span class='badge st-" + o.status + "'>" + (statusPt[o.status] || o.status) + "</span><span class='p-meta'>Ref: " + (o.provider_reference || "—") + "</span>" + (o.customer_note ? "<span class='p-meta'>Nota: " + String(o.customer_note).replace(/</g, "&lt;") + "</span>" : "") + "</div><div class='p-actions'><select class='field' data-status='" + o.id + "'><option value='pending_payment'>A aguardar pagamento</option><option value='paid'>Paga</option><option value='preparing'>A preparar</option><option value='on_the_way'>A caminho</option><option value='delivered'>Entregue</option><option value='cancelled'>Cancelada</option></select></div></div>";
     }).join("");
     box.querySelectorAll("[data-status]").forEach(function(sel){
       var id = sel.getAttribute("data-status");

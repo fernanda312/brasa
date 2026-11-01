@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", async function(){
   function resumePending(){
     try {
       var add = JSON.parse(localStorage.getItem("brasa-pending-add") || "null");
-      if (add && add.id) { window.brasa.addToCart(add.id, add.qty || 1); }
+      if (add && add.id) { window.brasa.addToCart(add.id, add.qty || 1, {extras: add.extras || [], note: add.note || ""}); }
       localStorage.removeItem("brasa-pending-add");
     } catch (e) {}
     var p = window.brasa.takePending();
@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     document.getElementById("auth-box").style.display = "none";
     document.getElementById("account-box").style.display = "block";
     document.getElementById("account-email").textContent = "Email: " + session.user.email;
-    var r = await window.brasa.supabase.from("orders").select("id, status, subtotal_mt, delivery_fee_mt, delivery_type, delivery_zone_name, total_mt, created_at").eq("user_id", session.user.id).order("created_at", {ascending: false}).limit(20);
+    var r = await window.brasa.supabase.from("orders").select("id, status, subtotal_mt, delivery_fee_mt, delivery_type, delivery_zone_name, customer_note, total_mt, created_at").eq("user_id", session.user.id).order("created_at", {ascending: false}).limit(20);
     var box = document.getElementById("my-orders");
     if (r.error) { box.innerHTML = "<p>Não foi possível carregar as encomendas.</p>"; }
     else if (!r.data.length) { box.innerHTML = "<p>Ainda não tem encomendas.</p>"; }
@@ -108,7 +108,8 @@ document.addEventListener("DOMContentLoaded", async function(){
         var deliveryLine = "";
         if (o.delivery_type === "delivery") deliveryLine = "<br>Entrega ao domicílio" + (o.delivery_zone_name ? " (" + o.delivery_zone_name + ")" : "") + ((o.delivery_fee_mt || 0) > 0 ? " · Taxa de entrega: " + fmtMT(o.delivery_fee_mt) : "");
         else if (o.delivery_type === "pickup") deliveryLine = "<br>Levantar no local";
-        return "<div style='border-bottom:1px solid hsl(0,0%,25%);padding:12px 0'><p style='margin:0'>Encomenda " + o.id.slice(0, 8) + " — " + (statusPt[o.status] || o.status) + "<br>" + bought + "<br>" + (o.total_mt ? fmtMT(o.total_mt) : "a confirmar") + deliveryLine + receipt + "</p>" + trackHtml(o.status) + "</div>";
+        var noteLine = o.customer_note ? "<br>Nota: " + String(o.customer_note).replace(/</g, "&lt;") : "";
+        return "<div style='border-bottom:1px solid hsl(0,0%,25%);padding:12px 0'><p style='margin:0'>Encomenda " + o.id.slice(0, 8) + " — " + (statusPt[o.status] || o.status) + "<br>" + bought + "<br>" + (o.total_mt ? fmtMT(o.total_mt) : "a confirmar") + deliveryLine + noteLine + receipt + "</p>" + trackHtml(o.status) + "</div>";
       }).join("");
     }
     (async function(){

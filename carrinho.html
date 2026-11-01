@@ -131,28 +131,36 @@ document.addEventListener("DOMContentLoaded", async function(){
   });
   window.brasa.getDeliveryFee().then(function(fee){ deliveryFee = fee; render(); });
   syncAddressField();
-  function changeQty(id, delta){
+  function itemKey(item){ return item.key || window.brasa.cartKey(item); }
+  function changeQty(key, delta){
     var cart = window.brasa.getCart();
-    var item = cart.find(function(i){ return i.id === id; });
-    if (!item) return;
-    item.qty += delta;
-    if (item.qty <= 0) cart = cart.filter(function(i){ return i.id !== id; });
-    window.brasa.saveCart(cart);
-    render();
+    for (var i = 0; i < cart.length; i++) {
+      if (itemKey(cart[i]) === key) {
+        cart[i].qty += delta;
+        if (cart[i].qty < 1) cart.splice(i, 1);
+        break;
+      }
+    }
+    window.brasa.saveCart(cart); render();
   }
   function render(){
     var cart = window.brasa.getCart();
-    if (!cart.length) { box.innerHTML = "<p>O seu carrinho está vazio.</p>"; totalEl.textContent = ""; return; }
-    var total = 0;
+    if (!cart.length) { box.innerHTML = "<p>O seu carrinho está vazio.</p>"; totalEl.textContent = ""; renderBreakdown(); return; }
     box.innerHTML = cart.map(function(item){
       var p = productById(item.id); if (!p) return "";
-      var line = p.price_mt * item.qty; total += line;
-      return '<div class="cart-row"><img src="' + p.image_url + '" alt="' + p.name + '"><div><h3>' + p.name + '</h3><p>' + p.category + '</p><p>Quantidade: ' + item.qty + '</p></div><div style="text-align:right"><p>' + fmtMT(line) + '</p><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button class="btn-outline" data-dec="' + p.id + '" type="button">−</button><button class="btn-outline" data-inc="' + p.id + '" type="button">+</button><button class="btn-outline" data-remove="' + p.id + '" type="button">Tirar</button></div></div></div>';
+      var line = window.brasa.lineTotal(item);
+      var extrasHtml = (item.extras || []).map(function(eid){
+        var ex = extraById(eid);
+        return ex ? "<p class='cart-extra'>+ " + ex.name + " (" + fmtMT(ex.price_mt) + ")</p>" : "";
+      }).join("");
+      var noteHtml = item.note ? "<p class='cart-extra'>Nota: " + item.note.replace(/</g, "&lt;") + "</p>" : "";
+      var key = itemKey(item).replace(/"/g, "&quot;");
+      return '<div class="cart-row"><img src="' + (p.image_url || "images/brasa-logo.png") + '" alt="' + p.name + '"><div><h3>' + p.name + '</h3><p>' + p.category + '</p><p class="cart-desc">' + (p.description || "") + '</p><p>Quantidade: ' + item.qty + '</p>' + extrasHtml + noteHtml + '</div><div style="text-align:right"><p>' + fmtMT(line) + '</p><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button class="btn-outline" data-dec="' + key + '" type="button">−</button><button class="btn-outline" data-inc="' + key + '" type="button">+</button><button class="btn-outline" data-remove="' + key + '" type="button">Tirar</button></div></div></div>';
     }).join("");
-    totalEl.textContent = "Total: " + fmtMT(total + feeFor(deliveryType()));
+    totalEl.textContent = "Total: " + fmtMT(window.brasa.cartSubtotal() + feeFor(deliveryType()));
     renderBreakdown();
     document.querySelectorAll("[data-remove]").forEach(function(b){
-      b.onclick = function(){ window.brasa.saveCart(window.brasa.getCart().filter(function(i){ return i.id !== b.getAttribute("data-remove"); })); render(); };
+      b.onclick = function(){ var k = b.getAttribute("data-remove"); window.brasa.saveCart(window.brasa.getCart().filter(function(i){ return itemKey(i) !== k; })); render(); };
     });
     document.querySelectorAll("[data-inc]").forEach(function(b){ b.onclick = function(){ changeQty(b.getAttribute("data-inc"), 1); }; });
     document.querySelectorAll("[data-dec]").forEach(function(b){ b.onclick = function(){ changeQty(b.getAttribute("data-dec"), -1); }; });
@@ -166,8 +174,11 @@ document.addEventListener("DOMContentLoaded", async function(){
     var checkoutFee = feeFor(deliveryType());
     document.getElementById("checkout-table").innerHTML = cart.map(function(item){
       var p = productById(item.id); if (!p) return "";
-      pricedTotal += p.price_mt * item.qty;
-      return "<p style='display:flex;justify-content:space-between;gap:16px'><span>" + p.name + " × " + item.qty + "</span><strong style='color:#fff'>" + fmtMT(p.price_mt * item.qty) + "</strong></p>";
+      var lt = window.brasa.lineTotal(item);
+      pricedTotal += lt;
+      var exTxt = (item.extras || []).map(function(eid){ var ex = extraById(eid); return ex ? ex.name : ""; }).filter(Boolean).join(", ");
+      var ntTxt = item.note ? " (" + item.note + ")" : "";
+      return "<p style='display:flex;justify-content:space-between;gap:16px'><span>" + p.name + " × " + item.qty + (exTxt ? "<br><small>+" + exTxt + "</small>" : "") + (ntTxt ? "<br><small>" + ntTxt.replace(/</g, "&lt;") + "</small>" : "") + "</span><strong style='color:#fff'>" + fmtMT(lt) + "</strong></p>";
     }).join("") +
     "<p style='display:flex;justify-content:space-between;gap:16px'><span>Subtotal</span><strong style='color:#fff'>" + fmtMT(pricedTotal) + "</strong></p>" +
     "<p style='display:flex;justify-content:space-between;gap:16px'><span>Taxa de entrega (" + (deliveryType() === "delivery" ? (zoneLabel() || "Entrega ao domicílio") : "Levantar no local") + ")</span><strong style='color:#fff'>" + fmtMT(checkoutFee) + "</strong></p>" +
@@ -196,9 +207,14 @@ document.addEventListener("DOMContentLoaded", async function(){
       if (payType === "delivery" && zones.length && !payZone) { err.style.display = "block"; err.textContent = "Escolhe a zona de entrega para calcular a taxa."; return; }
       err.style.display = "none";
       try {
+        var orderNote = cart.map(function(i){
+          var pp = productById(i.id);
+          return (i.note ? (pp ? pp.name : i.id) + ": " + i.note : "");
+        }).filter(Boolean).join(" | ");
         var orderRow = {
           user_id: session.user.id, status: "pending_payment", payment_method: "mpesa", phone: phone,
-          delivery_type: payType, delivery_address: payType === "delivery" ? payAddress : null
+          delivery_type: payType, delivery_address: payType === "delivery" ? payAddress : null,
+          customer_note: orderNote || null
         };
         // Zone keys only when a zone was chosen, so checkout still works
         // before the zones migration has run.
@@ -215,7 +231,7 @@ document.addEventListener("DOMContentLoaded", async function(){
         // Server recalculates the total from trusted prices; the browser
         // total is never trusted. 503 = payment not configured yet.
         var fn = await window.brasa.supabase.functions.invoke("create-payment", {
-          body: {order_id: order.id, phone: phone, items: cart, delivery_type: payType, delivery_address: payType === "delivery" ? payAddress : null, delivery_zone_id: payZone ? payZone.id : null}
+          body: {order_id: order.id, phone: phone, items: cart.map(function(i){ return {id: i.id, qty: i.qty, extras: (i.extras || []).map(function(e){ return {id: e}; })}; }), delivery_type: payType, delivery_address: payType === "delivery" ? payAddress : null, delivery_zone_id: payZone ? payZone.id : null}
         });
         if (fn.error) throw new Error(fn.error.message || "Pagamento indisponível de momento.");
         var data = fn.data || {};

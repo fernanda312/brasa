@@ -29,7 +29,7 @@
 // ZUMBO_API_URL may override it only if the merchant docs show otherwise.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { PRODUCT_NAMES, recalculateTotal } from "../_shared/trusted-prices.ts";
+import { EXTRA_NAMES, PRODUCT_NAMES, recalculateTotal } from "../_shared/trusted-prices.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -181,7 +181,7 @@ Deno.serve(async (req: Request) => {
   }).eq("id", order.id);
   await supabase.from("order_items").delete().eq("order_id", order.id);
   await supabase.from("order_items").insert(
-    lines.map((l) => ({ order_id: order.id, product_id: l.product_id, name: PRODUCT_NAMES[l.product_id] ?? l.product_id, qty: l.qty, unit_price_mt: l.unit_price_mt })),
+    lines.map((l) => ({ order_id: order.id, product_id: l.product_id, name: PRODUCT_NAMES[l.product_id] ?? EXTRA_NAMES[l.product_id] ?? l.product_id, qty: l.qty, unit_price_mt: l.unit_price_mt })),
   );
 
   // M-Pesa only, direct STK push. No hosted checkout, no redirect:

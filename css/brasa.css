@@ -64,6 +64,37 @@ label.field-label{display:block;font-family:Arial,Helvetica,sans-serif;font-size
 .cart-row h3{margin:0;font-weight:400}
 .cart-row p{color:hsl(30,10%,70%);margin:6px 0}
 .cart-total{font-size:20px;text-align:right;margin:28px 0}
+/* Telemóvel primeiro: nada pode sair do ecrã. O carrinho empilha em vez
+   de apertar: foto + texto em cima, preço e botões em baixo, a toda a largura. */
+html,body{overflow-x:hidden}
+.field{box-sizing:border-box}
+.cart-row img{width:96px;height:96px;object-fit:cover}
+.cart-desc{font-size:14px;line-height:1.5}
+.cart-extra{font-size:14px;color:#ffb4a8!important;margin:2px 0}
+@media(max-width:640px){
+  .app-wrap{padding:24px 12px}
+  .app-card{padding:20px 16px;border-radius:16px}
+  .app-card h1{font-size:26px}
+  .cart-row{grid-template-columns:64px 1fr;gap:12px;padding:16px 0}
+  .cart-row img{width:64px;height:64px}
+  .cart-row h3{font-size:17px}
+  .cart-row > div:last-child{grid-column:1/-1;text-align:left!important}
+  .cart-row > div:last-child > div{justify-content:flex-start!important}
+  .cart-row .btn-outline{padding:9px 14px}
+  .cart-total{font-size:18px}
+  .chatbox input[type=text]{min-width:0}
+}
+/* Folha de personalização (o que vem, extras, tirar, observações). */
+.sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.sheet-panel{position:relative;background:hsl(0,0%,12%);border:1px solid hsl(0,0%,25%);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto}
+.sheet-close{position:absolute;top:12px;right:16px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer}
+.sheet-title{color:#fff;font-weight:700;margin:18px 0 8px}
+.sheet-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sheet-check{display:flex;gap:8px;align-items:center;color:#ddd;font-size:14px;line-height:1.5}
+.sheet-check input{width:auto;accent-color:#e0311a}
+/* Botão flutuante do WhatsApp: verde, por cima do botão do chat. */
+.wa-fab{position:fixed;right:20px;bottom:92px;width:56px;height:56px;border-radius:50%;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:40;text-decoration:none}
+@media (max-width:768px){.wa-fab{bottom:156px;right:16px}}
 .chat-fab{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#e0311a,#000);color:#fff;align-items:center;justify-content:center;font-size:24px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:40;text-decoration:none}
 @media (max-width:768px){.chat-fab{bottom:84px;right:16px}}
 .chatpage{max-width:760px;margin:0 auto;padding:24px 16px 40px}

@@ -10,6 +10,11 @@ export const TRUSTED_PRICES: Record<string, number> = {
   monterrey: 320,
   cali: 320,
   "tacos-3": 420,
+  "coca-cola": 150,
+  fanta: 150,
+  sprite: 150,
+  agua: 80,
+  "batata-frita": 200,
 };
 
 // FALLBACK ONLY, for the unconfigured cart preview (js/catalog.js mirrors
@@ -29,12 +34,37 @@ export const PRODUCT_NAMES: Record<string, string> = {
   monterrey: "Monterrey",
   cali: "Cali",
   "tacos-3": "3 Tacos",
+  "coca-cola": "Coca-Cola (lata)",
+  fanta: "Fanta Laranja (lata)",
+  sprite: "Sprite (lata)",
+  agua: "Água mineral (500 ml)",
+  "batata-frita": "Batata frita",
+};
+
+// Extras, priced server-side like the products above. An extra is always
+// attached to one base item and charged once per base item (extra qty =
+// base qty). The browser never sends an extra price.
+export const EXTRA_PRICES: Record<string, number> = {
+  "extra-queijo": 100,
+  "extra-bacon": 150,
+  "extra-ovo": 100,
+  "extra-molho": 50,
+  "extra-batata": 150,
+};
+
+export const EXTRA_NAMES: Record<string, string> = {
+  "extra-queijo": "Queijo extra",
+  "extra-bacon": "Bacon extra",
+  "extra-ovo": "Ovo extra",
+  "extra-molho": "Molho da casa extra",
+  "extra-batata": "Batata extra",
 };
 
 export function recalculateTotal(
-  items: Array<{ id?: string; product_id?: string; qty: number }>,
+  items: Array<{ id?: string; product_id?: string; qty: number; extras?: Array<{ id?: string; extra_id?: string }> }>,
 ): { total: number; lines: Array<{ product_id: string; qty: number; unit_price_mt: number }> } {
-  const lines = items.map((item) => {
+  const lines: Array<{ product_id: string; qty: number; unit_price_mt: number }> = [];
+  for (const item of items) {
     const productId = item.product_id ?? item.id ?? "";
     const price = TRUSTED_PRICES[productId];
     if (price === undefined) {
@@ -44,8 +74,16 @@ export function recalculateTotal(
     }
     const qty = Math.floor(Number(item.qty));
     if (!Number.isFinite(qty) || qty < 1) throw new Error("Invalid quantity.");
-    return { product_id: productId, qty, unit_price_mt: price };
-  });
+    lines.push({ product_id: productId, qty, unit_price_mt: price });
+    for (const ex of item.extras || []) {
+      const extraId = ex.extra_id ?? ex.id ?? "";
+      const extraPrice = EXTRA_PRICES[extraId];
+      if (extraPrice === undefined) {
+        throw new Error(`Extra ${extraId} has no online price.`);
+      }
+      lines.push({ product_id: extraId, qty, unit_price_mt: extraPrice });
+    }
+  }
   const total = lines.reduce((sum, l) => sum + l.unit_price_mt * l.qty, 0);
   return { total, lines };
 }

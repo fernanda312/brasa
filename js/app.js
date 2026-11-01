@@ -22,33 +22,126 @@
       localStorage.setItem("brasa-cart", JSON.stringify(cart));
       window.brasa.updateCartCount();
     },
-    addToCart: function(id, qty){
+    // Cart items carry an optional key so the same burger with different
+    // extras/notes stays a separate line (like the big ordering apps).
+    cartKey: function(item){
+      var ex = (item.extras || []).slice().sort().join(",");
+      return item.id + "|" + ex + "|" + (item.note || "");
+    },
+    addToCart: function(id, qty, opts){
       var cart = window.brasa.getCart();
-      var found = cart.find(function(i){ return i.id === id; });
-      if (found) found.qty += (qty || 1); else cart.push({id: id, qty: qty || 1});
+      var item = {id: id, qty: qty || 1};
+      if (opts) {
+        if (opts.extras && opts.extras.length) item.extras = opts.extras.slice();
+        if (opts.note) item.note = opts.note;
+      }
+      item.key = window.brasa.cartKey(item);
+      var found = null;
+      for (var i = 0; i < cart.length; i++) {
+        var k = cart[i].key || window.brasa.cartKey(cart[i]);
+        if (k === item.key) { found = cart[i]; break; }
+      }
+      if (found) found.qty += item.qty; else cart.push(item);
       window.brasa.saveCart(cart);
+    },
+    // Line total for one cart item: base + extras, times quantity.
+    lineTotal: function(item){
+      var p = productById(item.id);
+      if (!p) return 0;
+      var unit = p.price_mt;
+      (item.extras || []).forEach(function(eid){
+        var ex = extraById(eid);
+        if (ex) unit += ex.price_mt;
+      });
+      return unit * item.qty;
+    },
+    // Customizer sheet: what the dish comes with, extras, removals,
+    // observations and quantity — then it goes to the cart.
+    openCustomizer: function(id){
+      var p = productById(id);
+      if (!p) return;
+      var old = document.getElementById("customizer-sheet");
+      if (old) old.remove();
+      var sheet = document.createElement("div");
+      sheet.id = "customizer-sheet";
+      sheet.className = "sheet-backdrop";
+      var extrasHtml = BRASA_EXTRAS.map(function(ex){
+        return "<label class='sheet-check'><input type='checkbox' data-extra='" + ex.id + "'> " + ex.name + " (+" + fmtMT(ex.price_mt) + ")</label>";
+      }).join("");
+      var removalsHtml = BRASA_REMOVALS.map(function(r){
+        return "<label class='sheet-check'><input type='checkbox' data-remove-ing='" + r + "'> Sem " + r + "</label>";
+      }).join("");
+      sheet.innerHTML = "<div class='sheet-panel'><button class='sheet-close' type='button'>×</button>" +
+        "<h3 style='color:#fff;margin:0 0 6px'>" + p.name + "</h3>" +
+        "<p style='margin:0 0 4px'><strong style='color:#fff'>O que vem:</strong> " + (p.description || "") + "</p>" +
+        "<p style='margin:0 0 16px'><strong style='color:#fff'>Preço:</strong> " + fmtMT(p.price_mt) + "</p>" +
+        "<p class='sheet-title'>Adicionar</p><div class='sheet-grid'>" + extrasHtml + "</div>" +
+        "<p class='sheet-title'>Tirar</p><div class='sheet-grid'>" + removalsHtml + "</div>" +
+        "<label class='field-label' for='sheet-obs'>Observações</label><input class='field' id='sheet-obs' type='text' placeholder='Ex.: pouco sal, bem passado'>" +
+        "<div style='display:flex;gap:10px;align-items:center;margin-top:16px'><button class='btn-outline' id='sheet-dec' type='button'>−</button><span id='sheet-qty' style='color:#fff;font-size:18px'>1</span><button class='btn-outline' id='sheet-inc' type='button'>+</button>" +
+        "<span id='sheet-total' style='color:#fff;margin-left:auto'></span></div>" +
+        "<button class='gradient-bg px-8 py-3 rounded-full text-white font-bold' id='sheet-add' type='button' style='margin-top:16px;width:100%'>Adicionar ao carrinho</button></div>";
+      document.body.appendChild(sheet);
+      var qty = 1;
+      function total(){
+        var t = p.price_mt;
+        sheet.querySelectorAll("[data-extra]:checked").forEach(function(c){
+          var ex = extraById(c.getAttribute("data-extra"));
+          if (ex) t += ex.price_mt;
+        });
+        document.getElementById("sheet-total").textContent = fmtMT(t * qty);
+      }
+      total();
+      sheet.querySelectorAll("[data-extra]").forEach(function(c){ c.addEventListener("change", total); });
+      document.getElementById("sheet-dec").onclick = function(){ if (qty > 1) { qty--; document.getElementById("sheet-qty").textContent = qty; total(); } };
+      document.getElementById("sheet-inc").onclick = function(){ qty++; document.getElementById("sheet-qty").textContent = qty; total(); };
+      sheet.querySelector(".sheet-close").onclick = function(){ sheet.remove(); };
+      sheet.addEventListener("click", function(e){ if (e.target === sheet) sheet.remove(); });
+      document.getElementById("sheet-add").onclick = async function(){
+        var extras = [];
+        sheet.querySelectorAll("[data-extra]:checked").forEach(function(c){ extras.push(c.getAttribute("data-extra")); });
+        var notes = [];
+        sheet.querySelectorAll("[data-remove-ing]:checked").forEach(function(c){ notes.push("Sem " + c.getAttribute("data-remove-ing")); });
+        var obs = document.getElementById("sheet-obs").value.trim();
+        if (obs) notes.push(obs);
+        var added = await window.brasa.requireAccountForCart(id, qty, {extras: extras, note: notes.join("; ")});
+        sheet.remove();
+        if (added) location.href = "carrinho.html";
+      };
     },
     // Nobody adds to the cart without an account. Without a session,
     // the item is remembered and the visitor is sent to create or
     // start a session; conta.html adds the remembered item after
     // sign-in and then goes to the cart.
-    requireAccountForCart: async function(id, qty){
+    requireAccountForCart: async function(id, qty, opts){
       var session = await window.brasa.getSession();
       if (!session) {
-        try { localStorage.setItem("brasa-pending-add", JSON.stringify({id: id, qty: qty || 1})); } catch (e) {}
+        try { localStorage.setItem("brasa-pending-add", JSON.stringify({id: id, qty: qty || 1, extras: (opts && opts.extras) || [], note: (opts && opts.note) || ""})); } catch (e) {}
         window.brasa.savePending("cart", "carrinho.html");
         location.href = "conta.html";
         return false;
       }
-      window.brasa.addToCart(id, qty);
+      window.brasa.addToCart(id, qty, opts);
       return true;
     },
     bindAddButtons: function(){
       document.querySelectorAll("[data-add]").forEach(function(btn){
         if (btn.getAttribute("data-bound")) return;
         btn.setAttribute("data-bound", "1");
-        btn.addEventListener("click", function(){
-          window.brasa.requireAccountForCart(btn.getAttribute("data-add"), 1).then(function(added){
+        btn.addEventListener("click", async function(){
+          var pid = btn.getAttribute("data-add");
+          var prod = productById(pid);
+          if (prod && FOOD_CATEGORIES.indexOf(prod.category) !== -1) {
+            var session = await window.brasa.getSession();
+            if (!session) {
+              window.brasa.savePending("cart", "carrinho.html");
+              location.href = "conta.html";
+              return;
+            }
+            window.brasa.openCustomizer(pid);
+            return;
+          }
+          window.brasa.requireAccountForCart(pid, 1).then(function(added){
             if (added) {
               var old = btn.textContent;
               btn.textContent = "Adicionado!";
@@ -83,8 +176,7 @@
     cartSubtotal: function(){
       var cart = window.brasa.getCart();
       return cart.reduce(function(sum, item){
-        var p = productById(item.id);
-        return sum + (p ? p.price_mt * item.qty : 0);
+        return sum + window.brasa.lineTotal(item);
       }, 0);
     },
     updateCartCount: function(){
@@ -170,6 +262,22 @@
       if (contactText && s.contact_text) contactText.textContent = s.contact_text;
       var ctaText = document.querySelector("[data-cta-text]");
       if (ctaText && s.cta_text) ctaText.textContent = s.cta_text;
+      var contactPhone = document.querySelector("[data-contact-phone]");
+      if (contactPhone && s.contact_phone) contactPhone.textContent = s.contact_phone;
+      document.querySelectorAll("[data-whatsapp-link]").forEach(function(a){
+        if (s.whatsapp_url) { a.href = s.whatsapp_url; a.style.display = "inline-block"; }
+      });
+      if (s.whatsapp_url && !document.getElementById("wa-fab")) {
+        var wa = document.createElement("a");
+        wa.id = "wa-fab";
+        wa.className = "wa-fab";
+        wa.href = s.whatsapp_url;
+        wa.target = "_blank";
+        wa.rel = "noopener";
+        wa.setAttribute("aria-label", "Falar no WhatsApp");
+        wa.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+        document.body.appendChild(wa);
+      }
       var deliveryText = document.querySelector("[data-delivery-text]");
       if (deliveryText && s.delivery_text) deliveryText.textContent = s.delivery_text;
       var trustText = document.querySelector("[data-trust-text]");

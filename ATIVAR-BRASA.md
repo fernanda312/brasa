@@ -74,3 +74,15 @@ A BRASA já é instalável: no telefone, abre o site no navegador e toca em "Adi
   (Baixa, Polana, Costa do Sol, Zimpeto, Matola Cidade, Machava) e os
   textos de contacto/CTA em `site_settings`. Pontos editam-se em
   Admin > Pontos de encomenda; textos, em Admin > Textos.
+
+## Atualização 2026-11-01 — personalização, bebidas, contacto
+- Correr a migração `supabase/migrations/20261101000010_brasa_drinks_notes_contact.sql`
+  (depois da 0009): 5 produtos novos (4 bebidas + batata frita),
+  `orders.customer_note` e `site_settings.contact_phone` (+ link WhatsApp
+  de arranque só onde ainda não havia nenhum).
+- Voltar a publicar a Edge Function `create-payment` (agora com extras:
+  ficheiro pronto em `supabase/functions-deploy/create-payment.ts`).
+- No site: ao tocar em Adicionar num hambúrguer/cachorro/tacos abre a
+  folha de personalização (o que vem, extras com preço, tirar, observações,
+  quantidade); bebidas e acompanhamentos entram diretos. O botão verde do
+  WhatsApp aparece em todo o site quando há link no admin.
