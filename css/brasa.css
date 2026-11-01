@@ -22,8 +22,23 @@
 footer .logo-badge img{height:40px!important}
 /* Fotos de hambúrguer nos cards do menu, em vez de símbolos. */
 .menu-photo{width:96px;height:96px;border-radius:50%;object-fit:cover;margin:0 auto 16px;display:block;border:2px solid #e0311a}
-/* Preços sem partir em duas linhas no telemóvel. */
-span[data-testid^="item-price"]{white-space:nowrap;text-align:right}
+/* Preços como selo bem desenhado: sem partir, sem apertar, legível. */
+span[data-testid^="item-price"]{white-space:nowrap;text-align:right;flex-shrink:0;background:linear-gradient(135deg,#e0311a,#8b0000);color:#fff!important;padding:6px 12px;border-radius:999px;font-size:14px}
+/* Faixa de promoções quentes: passa sempre, sem parar ao tocar. */
+.promo-strip{background:#000;border-top:2px solid #e0311a;border-bottom:2px solid #e0311a;overflow:hidden;padding:14px 0}
+.promo-track{display:flex;gap:24px;width:max-content;animation:promo-scroll 28s linear infinite}
+@keyframes promo-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.promo-item{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.promo-item img{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #e0311a}
+.promo-item span{font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#fff;font-weight:700;white-space:nowrap}
+/* Telemóvel: topo mais baixo, logo mais pequena, hero com mais respiro. */
+@media(max-width:768px){
+  nav .h-32{height:64px!important}
+  .logo-badge img{height:32px!important}
+  footer .logo-badge img{height:32px!important}
+  #home h1{font-size:40px!important}
+  .promo-item img{width:56px;height:56px}
+}
 /* Vídeo hero: ocupa o hero inteiro, sem player, sem controlos. */
 .hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 #mobile-menu a{display:block;padding:12px 0}
