@@ -1,0 +1,22 @@
+/* BRASA — override de cores: degradê vermelho escuro para preto.
+   O ficheiro Tailwind original fica intacto; isto só muda as cores. */
+:root{
+  --primary: hsl(0, 72%, 38%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(0, 80%, 30%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --accent: hsl(0, 68%, 46%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --ring: hsl(0, 72%, 38%);
+  --sidebar-primary: hsl(0, 72%, 38%);
+  --sidebar-accent: hsl(0, 68%, 46%);
+}
+.gradient-bg{background:linear-gradient(135deg,#8b0000,#000)!important}
+.gradient-text{background:linear-gradient(135deg,#ff5a5a,#c81e1e,#7f1d1d);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+/* A logo é preta sem fundo; no tema escuro ela só se vê sobre branco. */
+.logo-badge{background:#fff;border-radius:999px;padding:6px 12px;display:inline-flex;align-items:center}
+.logo-badge img{height:96px;width:auto}
+footer .logo-badge img{height:64px;width:auto}
+/* Vídeo hero: ocupa o hero inteiro, sem player, sem controlos. */
+.hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#mobile-menu a{display:block;padding:12px 0}
