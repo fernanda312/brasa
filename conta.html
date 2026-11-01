@@ -36,6 +36,15 @@
     <h1>O meu perfil</h1>
     <p>Conta ativa.</p>
     <p id="account-email" style="color:#fff"></p>
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:16px">
+      <img id="profile-photo" alt="A minha foto" style="width:72px;height:72px;border-radius:50%;object-fit:cover;display:none;border:2px solid #e0311a">
+      <div>
+        <label class="field-label" for="profile-photo-file">A minha foto (aparece no chat para a loja te reconhecer)</label>
+        <input type="file" id="profile-photo-file" accept="image/*" style="width:100%;color:#ddd">
+        <button class="btn-outline" id="btn-photo" type="button" style="margin-top:8px">Guardar foto</button>
+        <span id="photo-msg" style="color:#ddd"></span>
+      </div>
+    </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px">
       <a class="gradient-bg px-6 py-3 rounded-full text-white font-bold" href="chat.html">Abrir o chat</a>
       <a class="btn-outline" href="carrinho.html">Ver o carrinho</a>
@@ -72,12 +81,23 @@ document.addEventListener("DOMContentLoaded", async function(){
     document.getElementById("auth-box").style.display = "none";
     document.getElementById("account-box").style.display = "block";
     document.getElementById("account-email").textContent = "Email: " + session.user.email;
-    var r = await window.brasa.supabase.from("orders").select("id, status, subtotal_mt, delivery_fee_mt, delivery_type, total_mt, created_at").eq("user_id", session.user.id).order("created_at", {ascending: false}).limit(20);
+    var r = await window.brasa.supabase.from("orders").select("id, status, subtotal_mt, delivery_fee_mt, delivery_type, delivery_zone_name, total_mt, created_at").eq("user_id", session.user.id).order("created_at", {ascending: false}).limit(20);
     var box = document.getElementById("my-orders");
     if (r.error) { box.innerHTML = "<p>Não foi possível carregar as encomendas.</p>"; }
     else if (!r.data.length) { box.innerHTML = "<p>Ainda não tem encomendas.</p>"; }
     else {
-      var statusPt = {"pending_payment": "A aguardar pagamento", "paid": "Pago", "preparing": "A preparar", "delivered": "Entregue", "cancelled": "Cancelado"};
+      var statusPt = {"pending_payment": "A aguardar pagamento", "paid": "Pago", "preparing": "A preparar", "on_the_way": "A caminho", "delivered": "Entregue", "cancelled": "Cancelado"};
+      var trackSteps = [["pending_payment", "Recebida"], ["paid", "Paga"], ["preparing", "A preparar"], ["on_the_way", "A caminho"], ["delivered", "Entregue"]];
+      function trackHtml(status){
+        if (status === "cancelled") return "<div class='track'><span class='track-step done'>Cancelada</span></div>";
+        var idx = -1;
+        for (var i = 0; i < trackSteps.length; i++) if (trackSteps[i][0] === status) idx = i;
+        if (idx < 0) idx = 0;
+        return "<div class='track'>" + trackSteps.map(function(st, i){
+          var cls = i < idx ? "track-step done" : (i === idx ? "track-step current" : "track-step");
+          return "<span class='" + cls + "'>" + (i < idx ? "✓ " : "") + st[1] + "</span>";
+        }).join("<span class='track-arrow'>›</span>") + "</div>";
+      }
       var items = await window.brasa.supabase.from("order_items").select("order_id, name, qty").in("order_id", r.data.map(function(o){ return o.id; }));
       var byOrder = {}; (items.data || []).forEach(function(i){ (byOrder[i.order_id] = byOrder[i.order_id] || []).push(i); });
       box.innerHTML = r.data.map(function(o){
@@ -86,11 +106,31 @@ document.addEventListener("DOMContentLoaded", async function(){
           ? "<br>Recibo: " + (o.total_mt ? fmtMT(o.total_mt) : "—") + ", pago por M-Pesa. <a href='chat.html'>Ver recibo no chat</a>"
           : "";
         var deliveryLine = "";
-        if (o.delivery_type === "delivery") deliveryLine = "<br>Entrega ao domicílio" + ((o.delivery_fee_mt || 0) > 0 ? " · Taxa de entrega: " + fmtMT(o.delivery_fee_mt) : "");
+        if (o.delivery_type === "delivery") deliveryLine = "<br>Entrega ao domicílio" + (o.delivery_zone_name ? " (" + o.delivery_zone_name + ")" : "") + ((o.delivery_fee_mt || 0) > 0 ? " · Taxa de entrega: " + fmtMT(o.delivery_fee_mt) : "");
         else if (o.delivery_type === "pickup") deliveryLine = "<br>Levantar no local";
-        return "<p style='border-bottom:1px solid hsl(0,0%,25%);padding:12px 0'>Encomenda " + o.id.slice(0, 8) + " — " + (statusPt[o.status] || o.status) + "<br>" + bought + "<br>" + (o.total_mt ? fmtMT(o.total_mt) : "a confirmar") + deliveryLine + receipt + "</p>";
+        return "<div style='border-bottom:1px solid hsl(0,0%,25%);padding:12px 0'><p style='margin:0'>Encomenda " + o.id.slice(0, 8) + " — " + (statusPt[o.status] || o.status) + "<br>" + bought + "<br>" + (o.total_mt ? fmtMT(o.total_mt) : "a confirmar") + deliveryLine + receipt + "</p>" + trackHtml(o.status) + "</div>";
       }).join("");
     }
+    (async function(){
+      var prof = await window.brasa.supabase.from("profiles").select("avatar_url").eq("id", session.user.id).maybeSingle();
+      var img = document.getElementById("profile-photo");
+      if (prof.data && prof.data.avatar_url) { img.src = prof.data.avatar_url; img.style.display = "block"; }
+      document.getElementById("btn-photo").onclick = async function(){
+        var file = document.getElementById("profile-photo-file").files[0];
+        var pm = document.getElementById("photo-msg");
+        if (!file) { pm.textContent = "Escolhe uma foto primeiro."; return; }
+        if (file.size > 5 * 1024 * 1024) { pm.textContent = "A foto não pode passar de 5 MB."; return; }
+        pm.textContent = "A enviar…";
+        var path = session.user.id + "/avatar-" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        var up = await window.brasa.supabase.storage.from("chat-attachments").upload(path, file);
+        if (up.error) { pm.textContent = "Não foi possível enviar a foto: " + up.error.message; return; }
+        var pub = window.brasa.supabase.storage.from("chat-attachments").getPublicUrl(path);
+        var upd = await window.brasa.supabase.from("profiles").update({avatar_url: pub.data.publicUrl}).eq("id", session.user.id);
+        if (upd.error) { pm.textContent = "Não foi possível guardar a foto: " + upd.error.message; return; }
+        img.src = pub.data.publicUrl; img.style.display = "block";
+        pm.textContent = "Foto guardada.";
+      };
+    })();
     document.getElementById("btn-signout").onclick = function(){ window.brasa.signOut(); };
     return;
   }

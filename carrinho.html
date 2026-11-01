@@ -30,6 +30,11 @@
         <label class="field-label" for="delivery-address">Morada de entrega</label>
         <input class="field" id="delivery-address" type="text" placeholder="Rua, bairro e ponto de referência, em Maputo">
       </div>
+      <div id="delivery-zone-wrap" style="margin-top:8px">
+        <label class="field-label" for="delivery-zone">Zona de entrega (Maputo / Matola) — cada zona tem a sua taxa</label>
+        <select class="field" id="delivery-zone"><option value="">A carregar zonas…</option></select>
+      </div>
+      <p id="delivery-times" style="color:#ddd;line-height:1.6"></p>
       <div id="delivery-breakdown" style="margin-top:16px"></div>
     </div>
     <div style="display:flex;gap:14px;flex-wrap:wrap">
@@ -72,11 +77,26 @@ document.addEventListener("DOMContentLoaded", async function(){
   }
   var box = document.getElementById("items"), totalEl = document.getElementById("total");
   var deliveryFee = DEFAULT_DELIVERY_FEE_MT;
+  var zones = [];
   function deliveryType(){
     var sel = document.querySelector('input[name="delivery-type"]:checked');
     return sel ? sel.value : "delivery";
   }
-  function feeFor(type){ return type === "delivery" ? deliveryFee : 0; }
+  function selectedZone(){
+    var sel = document.getElementById("delivery-zone");
+    if (!sel || !sel.value) return null;
+    for (var i = 0; i < zones.length; i++) if (zones[i].id === sel.value) return zones[i];
+    return null;
+  }
+  function feeFor(type){
+    if (type !== "delivery") return 0;
+    var z = selectedZone();
+    return z ? z.fee_mt : deliveryFee;
+  }
+  function zoneLabel(){
+    var z = selectedZone();
+    return z ? z.name : "";
+  }
   function renderBreakdown(){
     var cart = window.brasa.getCart();
     var subtotal = window.brasa.cartSubtotal();
@@ -85,12 +105,27 @@ document.addEventListener("DOMContentLoaded", async function(){
     if (!cart.length) { el.innerHTML = ""; return; }
     el.innerHTML =
       "<p style='display:flex;justify-content:space-between;gap:16px'><span>Subtotal</span><strong style='color:#fff'>" + fmtMT(subtotal) + "</strong></p>" +
-      "<p style='display:flex;justify-content:space-between;gap:16px'><span>Taxa de entrega</span><strong style='color:#fff'>" + fmtMT(fee) + "</strong></p>" +
+      "<p style='display:flex;justify-content:space-between;gap:16px'><span>Taxa de entrega" + (deliveryType() === "delivery" && zoneLabel() ? " (" + zoneLabel() + ")" : "") + "</span><strong style='color:#fff'>" + fmtMT(fee) + "</strong></p>" +
       "<p style='display:flex;justify-content:space-between;gap:16px'><span><strong style='color:#fff'>Total a pagar</strong></span><strong style='color:#fff'>" + fmtMT(subtotal + fee) + "</strong></p>";
   }
   function syncAddressField(){
-    document.getElementById("delivery-address-wrap").style.display = (deliveryType() === "delivery") ? "block" : "none";
+    var d = deliveryType() === "delivery";
+    document.getElementById("delivery-address-wrap").style.display = d ? "block" : "none";
+    document.getElementById("delivery-zone-wrap").style.display = d ? "block" : "none";
   }
+  document.getElementById("delivery-zone").addEventListener("change", function(){ render(); });
+  window.brasa.getDeliveryZones().then(function(zs){
+    zones = zs;
+    var sel = document.getElementById("delivery-zone");
+    if (!zones.length) { sel.innerHTML = "<option value=''>Taxa única de entrega</option>"; render(); return; }
+    sel.innerHTML = "<option value=''>Escolhe a tua zona…</option>" + zones.map(function(z){ return "<option value='" + z.id + "'>" + z.name + " — " + fmtMT(z.fee_mt) + "</option>"; }).join("");
+    render();
+  });
+  window.brasa.getSettings().then(function(st){
+    if (!st) return;
+    var t = document.getElementById("delivery-times");
+    t.textContent = "Tempo de preparo: " + (st.prep_time_text || "30 a 45 minutos") + " · Tempo de entrega: " + (st.delivery_time_text || "45 a 90 minutos") + ".";
+  });
   document.querySelectorAll('input[name="delivery-type"]').forEach(function(r){
     r.addEventListener("change", function(){ syncAddressField(); render(); });
   });
@@ -135,7 +170,7 @@ document.addEventListener("DOMContentLoaded", async function(){
       return "<p style='display:flex;justify-content:space-between;gap:16px'><span>" + p.name + " × " + item.qty + "</span><strong style='color:#fff'>" + fmtMT(p.price_mt * item.qty) + "</strong></p>";
     }).join("") +
     "<p style='display:flex;justify-content:space-between;gap:16px'><span>Subtotal</span><strong style='color:#fff'>" + fmtMT(pricedTotal) + "</strong></p>" +
-    "<p style='display:flex;justify-content:space-between;gap:16px'><span>Taxa de entrega (" + (deliveryType() === "delivery" ? "Entrega ao domicílio" : "Levantar no local") + ")</span><strong style='color:#fff'>" + fmtMT(checkoutFee) + "</strong></p>" +
+    "<p style='display:flex;justify-content:space-between;gap:16px'><span>Taxa de entrega (" + (deliveryType() === "delivery" ? (zoneLabel() || "Entrega ao domicílio") : "Levantar no local") + ")</span><strong style='color:#fff'>" + fmtMT(checkoutFee) + "</strong></p>" +
     "<p style='display:flex;justify-content:space-between;gap:16px'><span><strong style='color:#fff'>Total a pagar</strong></span><strong style='color:#fff'>" + fmtMT(pricedTotal + checkoutFee) + "</strong></p>";
     if (!window.brasa.configured) {
       document.getElementById("checkout-status").textContent = "A loja ainda está a ser ligada.";
@@ -157,12 +192,18 @@ document.addEventListener("DOMContentLoaded", async function(){
       var payType = deliveryType();
       var payAddress = document.getElementById("delivery-address").value.trim();
       if (payType === "delivery" && !payAddress) { err.style.display = "block"; err.textContent = "Para entrega ao domicílio, escreve a morada de entrega."; return; }
+      var payZone = payType === "delivery" ? selectedZone() : null;
+      if (payType === "delivery" && zones.length && !payZone) { err.style.display = "block"; err.textContent = "Escolhe a zona de entrega para calcular a taxa."; return; }
       err.style.display = "none";
       try {
-        var orderRes = await window.brasa.supabase.from("orders").insert({
+        var orderRow = {
           user_id: session.user.id, status: "pending_payment", payment_method: "mpesa", phone: phone,
           delivery_type: payType, delivery_address: payType === "delivery" ? payAddress : null
-        }).select().single();
+        };
+        // Zone keys only when a zone was chosen, so checkout still works
+        // before the zones migration has run.
+        if (payZone) { orderRow.delivery_zone_id = payZone.id; orderRow.delivery_zone_name = payZone.name; }
+        var orderRes = await window.brasa.supabase.from("orders").insert(orderRow).select().single();
         if (orderRes.error) throw new Error(orderRes.error.message);
         var order = orderRes.data;
         var items = cart.map(function(i){
@@ -174,7 +215,7 @@ document.addEventListener("DOMContentLoaded", async function(){
         // Server recalculates the total from trusted prices; the browser
         // total is never trusted. 503 = payment not configured yet.
         var fn = await window.brasa.supabase.functions.invoke("create-payment", {
-          body: {order_id: order.id, phone: phone, items: cart, delivery_type: payType, delivery_address: payType === "delivery" ? payAddress : null}
+          body: {order_id: order.id, phone: phone, items: cart, delivery_type: payType, delivery_address: payType === "delivery" ? payAddress : null, delivery_zone_id: payZone ? payZone.id : null}
         });
         if (fn.error) throw new Error(fn.error.message || "Pagamento indisponível de momento.");
         var data = fn.data || {};

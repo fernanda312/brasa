@@ -65,13 +65,22 @@ label.field-label{display:block;font-family:Arial,Helvetica,sans-serif;font-size
 .cart-row p{color:hsl(30,10%,70%);margin:6px 0}
 .cart-total{font-size:20px;text-align:right;margin:28px 0}
 .chat-fab{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#e0311a,#000);color:#fff;align-items:center;justify-content:center;font-size:24px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:40;text-decoration:none}
+@media (max-width:768px){.chat-fab{bottom:84px;right:16px}}
 .chatpage{max-width:760px;margin:0 auto;padding:24px 16px 40px}
 .chathead{display:flex;align-items:center;gap:14px;border-bottom:1px solid hsl(0,0%,25%);padding:12px 0}
 .chathead img{width:44px;height:44px}
 .chathead h1{font-size:20px;font-weight:400;margin:0}
 .chathead p{margin:2px 0 0;color:hsl(30,10%,70%);font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
-.chatlog{border:1px solid hsl(0,0%,25%);border-radius:16px;padding:18px;min-height:420px;display:flex;flex-direction:column;gap:12px;background:hsl(0,0%,12%)}
+.chatlog{border:1px solid hsl(0,0%,25%);border-radius:16px;padding:18px;height:62vh;min-height:420px;max-height:720px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;background:hsl(0,0%,12%)}
 .bubble{max-width:78%;padding:10px 14px;border-radius:18px;line-height:1.55;font-size:16px;color:#fff}
+.bubble-row{display:flex;gap:8px;align-items:flex-end;max-width:86%}
+.bubble-row .bubble{max-width:100%}
+.avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;flex:none;border:1px solid hsl(0,0%,35%)}
+.track{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.track-step{font-size:12px;padding:4px 10px;border-radius:999px;background:hsl(0,0%,20%);color:#bbb}
+.track-step.done{background:#14532d;color:#fff}
+.track-step.current{background:linear-gradient(135deg,#e0311a,#000);color:#fff;font-weight:700}
+.track-arrow{color:#777}
 .bubble.mine{align-self:flex-end;background:#7f1d1d;border-bottom-right-radius:4px}
 .bubble.theirs{align-self:flex-start;background:#262626;border-bottom-left-radius:4px}
 .bubble small{display:block;opacity:.7;font-size:11px;margin-top:6px;font-family:Arial,Helvetica,sans-serif}

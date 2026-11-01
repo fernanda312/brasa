@@ -22,6 +22,7 @@
     <div class="chathead">
       <img class="site-logo" src="images/brasa-logo.png" alt="Logótipo BRASA">
       <div><h1>BRASA</h1><p>Chat da loja</p></div>
+      <a class="btn-outline" id="wa-chat-btn" data-whatsapp-link href="#" target="_blank" rel="noopener" style="display:none;margin-left:auto">Continuar no WhatsApp</a>
     </div>
     <div class="app-card" id="group-banner" style="display:none;margin:24px 0">
       <p>Entra no grupo para receber as novidades em primeira mão.</p>
@@ -54,6 +55,11 @@ document.addEventListener("DOMContentLoaded", async function(){
   // in admin > Definições da loja; no link is invented here.
   var settings = await window.brasa.getSettings();
   if (settings && settings.whatsapp_group_url) document.getElementById("group-banner").style.display = "block";
+  var shopLogo = (settings && settings.logo_url) || "images/brasa-logo.png";
+  if (settings && settings.whatsapp_url) {
+    var waBtn = document.getElementById("wa-chat-btn");
+    waBtn.href = settings.whatsapp_url; waBtn.style.display = "inline-block";
+  }
   var convId = null;
   async function ensureConversation(){
     var r = await window.brasa.supabase.from("conversations").select("id").eq("user_id", session.user.id).order("created_at", {ascending: false}).limit(1).maybeSingle();
@@ -85,7 +91,9 @@ document.addEventListener("DOMContentLoaded", async function(){
       else body = m.body ? m.body.replace(/</g, "&lt;") : "";
       // Seen ticks, WhatsApp style: ✓ sent, ✓✓ seen by the other side.
       var seen = mine ? (m.read_at ? " ✓✓" : " ✓") : "";
-      return '<div class="bubble ' + (mine ? "mine" : "theirs") + '">' + body + "<small>" + timeOf(m.created_at) + seen + "</small></div>";
+      var bubble = '<div class="bubble ' + (mine ? "mine" : "theirs") + '">' + body + "<small>" + timeOf(m.created_at) + seen + "</small></div>";
+      if (mine) return bubble;
+      return '<div class="bubble-row"><img class="avatar" src="' + shopLogo + '" alt="BRASA">' + bubble + '</div>';
     }).join("");
     log.scrollTop = log.scrollHeight;
     // Mark the shop's messages as seen now that the customer opened the chat.
@@ -93,7 +101,14 @@ document.addEventListener("DOMContentLoaded", async function(){
   }
   convId = await ensureConversation();
   await loadMessages();
-  setInterval(loadMessages, 5000);
+  // Real time: new messages arrive the moment they are sent. The
+  // 30-second refresh stays only as a safety net if realtime drops.
+  try {
+    window.brasa.supabase.channel("brasa-chat-" + convId)
+      .on("postgres_changes", {event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + convId}, function(){ loadMessages(); })
+      .subscribe();
+  } catch (e) {}
+  setInterval(loadMessages, 30000);
   document.getElementById("chatform").addEventListener("submit", async function(e){
     e.preventDefault();
     var text = document.getElementById("chat-text").value.trim();

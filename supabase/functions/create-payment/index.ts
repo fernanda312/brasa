@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
   if (!user) return json({ error: "Sign-in required." }, 401);
   const supabase = createClient(supabaseUrl, serviceKey);
 
-  let body: { order_id?: string; phone?: string; items?: Array<{ id?: string; product_id?: string; qty: number }>; delivery_type?: string; delivery_address?: string | null };
+  let body: { order_id?: string; phone?: string; items?: Array<{ id?: string; product_id?: string; qty: number }>; delivery_type?: string; delivery_address?: string | null; delivery_zone_id?: string | null };
   try {
     body = await req.json();
   } catch {
@@ -131,21 +131,41 @@ Deno.serve(async (req: Request) => {
     return json({ error: (e as Error).message }, 400);
   }
 
-  // Delivery fee: read from site_settings, never from the browser, never
-  // guessed. If the row or the fee is missing/invalid, stop honestly
+  // Delivery fee: read from the database, never from the browser, never
+  // guessed. Delivery orders use the chosen delivery zone's fee
+  // (Admin > Definições > Zonas de entrega); without a zone, the legacy
+  // site_settings fee applies. If the fee cannot be read, stop honestly
   // with 500 — no payment is created and nothing is charged.
   let deliveryFee = 0;
+  let deliveryZoneId = null;
+  let deliveryZoneName = null;
   if (deliveryType === "delivery") {
-    const { data: settings, error: settingsError } = await supabase
-      .from("site_settings")
-      .select("delivery_fee_mt")
-      .eq("id", 1)
-      .maybeSingle();
-    const fee = settings?.delivery_fee_mt as unknown;
-    if (settingsError || !settings || typeof fee !== "number" || !Number.isFinite(fee) || fee < 0 || Math.floor(fee) !== fee) {
-      return json({ error: "The delivery fee is not configured yet. Your order is saved as pending and has not been charged." }, 500);
+    var zoneId = body.delivery_zone_id ? String(body.delivery_zone_id) : "";
+    if (zoneId) {
+      var zoneRes = await supabase
+        .from("delivery_zones")
+        .select("id, name, fee_mt, active")
+        .eq("id", zoneId)
+        .maybeSingle();
+      var zfee = zoneRes.data?.fee_mt as unknown;
+      if (zoneRes.error || !zoneRes.data || !zoneRes.data.active || typeof zfee !== "number" || !Number.isFinite(zfee) || zfee < 0 || Math.floor(zfee) !== zfee) {
+        return json({ error: "The delivery zone is not configured yet. Your order is saved as pending and has not been charged." }, 500);
+      }
+      deliveryFee = zfee;
+      deliveryZoneId = zoneRes.data.id;
+      deliveryZoneName = zoneRes.data.name;
+    } else {
+      var settingsRes = await supabase
+        .from("site_settings")
+        .select("delivery_fee_mt")
+        .eq("id", 1)
+        .maybeSingle();
+      var fee = settingsRes.data?.delivery_fee_mt as unknown;
+      if (settingsRes.error || !settingsRes.data || typeof fee !== "number" || !Number.isFinite(fee) || fee < 0 || Math.floor(fee) !== fee) {
+        return json({ error: "The delivery fee is not configured yet. Your order is saved as pending and has not been charged." }, 500);
+      }
+      deliveryFee = fee;
     }
-    deliveryFee = fee;
   }
   const total = subtotal + deliveryFee;
 
@@ -156,6 +176,8 @@ Deno.serve(async (req: Request) => {
     total_mt: total,
     delivery_type: deliveryType,
     delivery_address: deliveryAddress,
+    delivery_zone_id: deliveryZoneId,
+    delivery_zone_name: deliveryZoneName,
   }).eq("id", order.id);
   await supabase.from("order_items").delete().eq("order_id", order.id);
   await supabase.from("order_items").insert(

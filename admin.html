@@ -83,7 +83,7 @@
     </div>
     <div id="tab-orders" class="admin-card" style="display:none">
       <h2 class="admin-section-title">Encomendas</h2>
-      <label class="field-label" for="o-filter">Filtrar por estado</label><select class="field" id="o-filter"><option value="">Todas</option><option value="pending_payment">A aguardar pagamento</option><option value="paid">Pagas</option><option value="preparing">A preparar</option><option value="delivered">Entregues</option><option value="cancelled">Canceladas</option></select>
+      <label class="field-label" for="o-filter">Filtrar por estado</label><select class="field" id="o-filter"><option value="">Todas</option><option value="pending_payment">A aguardar pagamento</option><option value="paid">Pagas</option><option value="preparing">A preparar</option><option value="on_the_way">A caminho</option><option value="delivered">Entregues</option><option value="cancelled">Canceladas</option></select>
       <div id="order-list" style="margin-top:16px"></div>
     </div>
     <div id="tab-customers" class="admin-card" style="display:none">
@@ -109,10 +109,23 @@
         <label class="field-label" for="st-group">Link do grupo (formato de grupo; troque pelo link real)</label><input class="field" id="st-group">
         <label class="field-label" for="st-delay">Botão do grupo: mostrar depois de quantos segundos no site</label><input class="field" id="st-delay" type="number" min="10" step="1">
         <label class="field-label" for="st-scroll">Botão do grupo: mostrar a partir de que percentagem de scroll</label><input class="field" id="st-scroll" type="number" min="10" max="100" step="1">
-        <label class="field-label" for="st-fee">Taxa de entrega (MT) — o que o cliente paga a mais quando escolhe entrega ao domicílio; levantar no local não tem taxa</label><input class="field" id="st-fee" type="number" min="0" step="1">
+        <label class="field-label" for="st-fee">Taxa de entrega (MT) — taxa única, só quando ainda não há zona escolhida; com zonas, vale a taxa da zona</label><input class="field" id="st-fee" type="number" min="0" step="1">
+        <label class="field-label" for="st-prep-time">Tempo de preparo (texto que o cliente vê no carrinho)</label><input class="field" id="st-prep-time" placeholder="30 a 45 minutos">
+        <label class="field-label" for="st-delivery-time">Tempo de entrega (texto que o cliente vê no carrinho)</label><input class="field" id="st-delivery-time" placeholder="45 a 90 minutos">
         <div style="margin-top:16px"><button class="gradient-bg px-8 py-3 rounded-full text-white font-bold" type="submit">Guardar definições</button></div>
       </form>
       <div class="msg" id="st-msg" style="display:none"></div>
+      <div style="margin-top:28px;border-top:1px solid hsl(0,0%,25%);padding-top:20px">
+        <h3 style="color:#fff">Zonas de entrega — Maputo e Matola</h3>
+        <p style="color:#ddd">Cada zona tem a sua taxa. O cliente escolhe a zona no carrinho e paga a taxa dessa zona junto com a encomenda. Desliga uma zona para ela deixar de aparecer.</p>
+        <div id="zone-list"></div>
+        <form id="zone-form" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <input class="field" id="zone-name" placeholder="Nome da zona (ex.: Matola Cidade)" style="flex:2;min-width:180px" required>
+          <input class="field" id="zone-fee" type="number" min="0" step="1" placeholder="Taxa MT" style="flex:1;min-width:110px" required>
+          <button class="gradient-bg px-6 py-3 rounded-full text-white font-bold" type="submit">Adicionar zona</button>
+        </form>
+        <div class="msg" id="zone-msg" style="display:none"></div>
+      </div>
     </div>
   </div>
 </main>
@@ -252,6 +265,8 @@ document.addEventListener("DOMContentLoaded", async function(){
     document.getElementById("st-delay").value = s.group_banner_delay_seconds || 90;
     document.getElementById("st-scroll").value = s.group_banner_scroll_percent || 70;
     document.getElementById("st-fee").value = (s.delivery_fee_mt === null || s.delivery_fee_mt === undefined) ? 150 : s.delivery_fee_mt;
+    document.getElementById("st-prep-time").value = s.prep_time_text || "30 a 45 minutos";
+    document.getElementById("st-delivery-time").value = s.delivery_time_text || "45 a 90 minutos";
   }
   document.getElementById("texts-form").addEventListener("submit", async function(e){
     e.preventDefault();
@@ -289,7 +304,9 @@ document.addEventListener("DOMContentLoaded", async function(){
         whatsapp_group_url: document.getElementById("st-group").value.trim(),
         group_banner_delay_seconds: parseInt(document.getElementById("st-delay").value, 10) || 90,
         group_banner_scroll_percent: parseInt(document.getElementById("st-scroll").value, 10) || 70,
-        delivery_fee_mt: (Number.isFinite(feeVal) && feeVal >= 0) ? feeVal : 150
+        delivery_fee_mt: (Number.isFinite(feeVal) && feeVal >= 0) ? feeVal : 150,
+        prep_time_text: document.getElementById("st-prep-time").value.trim() || "30 a 45 minutos",
+        delivery_time_text: document.getElementById("st-delivery-time").value.trim() || "45 a 90 minutos"
       };
       var res = await sb.from("site_settings").update(row).eq("id", 1);
       if (res.error) throw res.error;
@@ -298,7 +315,7 @@ document.addEventListener("DOMContentLoaded", async function(){
   });
   async function loadCustomers(){
     var box = document.getElementById("customer-list");
-    var profs = await sb.from("profiles").select("id, email, whatsapp, created_at").order("created_at", {ascending: false}).limit(200);
+    var profs = await sb.from("profiles").select("id, email, whatsapp, avatar_url, created_at").order("created_at", {ascending: false}).limit(200);
     if (profs.error) { box.innerHTML = "<p>Não foi possível carregar os clientes.</p>"; return; }
     if (!profs.data.length) { box.innerHTML = "<p>Ainda não há clientes.</p>"; return; }
     var orders = await sb.from("orders").select("id, user_id, status, total_mt, phone").order("created_at", {ascending: false});
@@ -312,11 +329,12 @@ document.addEventListener("DOMContentLoaded", async function(){
       var wa = phone ? "<a class='btn-outline' href='https://wa.me/258" + phone.replace(/\D/g, "").replace(/^258/, "") + "' target='_blank' rel='noopener'>WhatsApp</a>" : "";
       var bought = [];
       mine.forEach(function(o){ (itemsByOrder[o.id] || []).forEach(function(i){ bought.push(i.name + " × " + i.qty + (o.status === "paid" || o.status === "preparing" || o.status === "delivered" ? "" : " (" + o.status + ")")); }); });
-      return "<div class='p-card'><div class='p-info'><strong>" + (p.email || "—") + "</strong><span class='p-meta'>WhatsApp/telefone: " + (phone || "—") + "</span><span class='p-meta'>Encomendas: " + mine.length + " · Pagas: " + paid.length + " · Total pago: " + (totalPaid ? fmtMT(totalPaid) : "—") + "</span><span class='p-meta'>Comprou: " + (bought.length ? bought.join(", ") : "Ainda não comprou.") + "</span></div><div class='p-actions'>" + wa + "</div></div>";
+      var av = p.avatar_url ? "<img class='avatar' src='" + p.avatar_url + "' alt='' style='width:40px;height:40px'>" : "";
+      return "<div class='p-card'><div class='p-info'>" + av + "<strong>" + (p.email || "—") + "</strong><span class='p-meta'>WhatsApp/telefone: " + (phone || "—") + "</span><span class='p-meta'>Encomendas: " + mine.length + " · Pagas: " + paid.length + " · Total pago: " + (totalPaid ? fmtMT(totalPaid) : "—") + "</span><span class='p-meta'>Comprou: " + (bought.length ? bought.join(", ") : "Ainda não comprou.") + "</span></div><div class='p-actions'>" + wa + "</div></div>";
     }).join("");
   }
   async function loadOrders(){
-    var r = await sb.from("orders").select("id, user_id, status, subtotal_mt, delivery_fee_mt, delivery_type, delivery_address, total_mt, phone, provider_reference, created_at").order("created_at", {ascending: false}).limit(50);
+    var r = await sb.from("orders").select("id, user_id, status, subtotal_mt, delivery_fee_mt, delivery_type, delivery_zone_name, delivery_address, total_mt, phone, provider_reference, created_at").order("created_at", {ascending: false}).limit(50);
     var box = document.getElementById("order-list");
     if (r.error) { box.innerHTML = "<p>Não foi possível carregar as encomendas.</p>"; return; }
     if (!r.data.length) { box.innerHTML = "<p>Ainda não há encomendas.</p>"; return; }
@@ -327,15 +345,15 @@ document.addEventListener("DOMContentLoaded", async function(){
     var f = document.getElementById("o-filter") ? document.getElementById("o-filter").value : "";
     var ords = f ? r.data.filter(function(o){ return o.status === f; }) : r.data;
     if (!ords.length) { box.innerHTML = "<p>Nenhuma encomenda com esse estado.</p>"; return; }
-    var statusPt = {"pending_payment": "A aguardar pagamento", "paid": "Paga", "preparing": "A preparar", "delivered": "Entregue", "cancelled": "Cancelada"};
+    var statusPt = {"pending_payment": "A aguardar pagamento", "paid": "Paga", "preparing": "A preparar", "on_the_way": "A caminho", "delivered": "Entregue", "cancelled": "Cancelada"};
     box.innerHTML = ords.map(function(o){
       var bought = (itemsByOrder[o.id] || []).map(function(i){ return i.name + " × " + i.qty; }).join(", ") || "—";
-      var deliveryLabel = o.delivery_type === "delivery" ? "Entrega ao domicílio" : (o.delivery_type === "pickup" ? "Levantar no local" : "—");
+      var deliveryLabel = o.delivery_type === "delivery" ? ("Entrega ao domicílio" + (o.delivery_zone_name ? " (" + o.delivery_zone_name + ")" : "")) : (o.delivery_type === "pickup" ? "Levantar no local" : "—");
       var addressLine = (o.delivery_type === "delivery" && o.delivery_address) ? "<span class='p-meta'>Morada de entrega: " + o.delivery_address + "</span>" : "";
       var breakdown = (o.subtotal_mt !== null && o.subtotal_mt !== undefined)
         ? "<span class='p-meta'>Subtotal: " + fmtMT(o.subtotal_mt) + " · Taxa de entrega: " + fmtMT(o.delivery_fee_mt || 0) + " · Total: " + (o.total_mt ? fmtMT(o.total_mt) : "—") + "</span>"
         : "<span class='p-price'>" + (o.total_mt ? fmtMT(o.total_mt) : "—") + "</span>";
-      return "<div class='p-card'><div class='p-info'><strong>Encomenda " + o.id.slice(0, 8) + "</strong><span class='p-meta'>" + (emailById[o.user_id] || o.user_id.slice(0, 8)) + " · " + (o.phone || "") + "</span><span class='p-meta'>Comprou: " + bought + "</span><span class='p-meta'>Entrega: " + deliveryLabel + "</span>" + addressLine + breakdown + " <span class='badge st-" + o.status + "'>" + (statusPt[o.status] || o.status) + "</span><span class='p-meta'>Ref: " + (o.provider_reference || "—") + "</span></div><div class='p-actions'><select class='field' data-status='" + o.id + "'><option value='pending_payment'>A aguardar pagamento</option><option value='paid'>Paga</option><option value='preparing'>A preparar</option><option value='delivered'>Entregue</option><option value='cancelled'>Cancelada</option></select></div></div>";
+      return "<div class='p-card'><div class='p-info'><strong>Encomenda " + o.id.slice(0, 8) + "</strong><span class='p-meta'>" + (emailById[o.user_id] || o.user_id.slice(0, 8)) + " · " + (o.phone || "") + "</span><span class='p-meta'>Comprou: " + bought + "</span><span class='p-meta'>Entrega: " + deliveryLabel + "</span>" + addressLine + breakdown + " <span class='badge st-" + o.status + "'>" + (statusPt[o.status] || o.status) + "</span><span class='p-meta'>Ref: " + (o.provider_reference || "—") + "</span></div><div class='p-actions'><select class='field' data-status='" + o.id + "'><option value='pending_payment'>A aguardar pagamento</option><option value='paid'>Paga</option><option value='preparing'>A preparar</option><option value='on_the_way'>A caminho</option><option value='delivered'>Entregue</option><option value='cancelled'>Cancelada</option></select></div></div>";
     }).join("");
     box.querySelectorAll("[data-status]").forEach(function(sel){
       var id = sel.getAttribute("data-status");
@@ -345,36 +363,64 @@ document.addEventListener("DOMContentLoaded", async function(){
     });
   }
   var selectedConv = null;
+  var chatCustomers = {};
+  var selectedUserId = null;
+  var chatSubscribed = false;
+  async function openConv(convId, cust){
+    selectedConv = convId;
+    selectedUserId = cust ? cust.id : null;
+    document.getElementById("admin-reply-form").style.display = "block";
+    var box = document.getElementById("chat-list");
+    var m = await sb.from("messages").select("sender, body, file_url, read_at, created_at").eq("conversation_id", convId).order("created_at", {ascending: true}).limit(100);
+    var list = m.data || [];
+    await sb.from("messages").update({read_at: new Date().toISOString()}).eq("conversation_id", convId).eq("sender", "customer").is("read_at", null);
+    var settings = await window.brasa.getSettings();
+    var shopLogo = (settings && settings.logo_url) || "images/brasa-logo.png";
+    box.innerHTML = list.map(function(x){
+      var content = "";
+      if (x.file_url) {
+        var clean = x.file_url.split("?")[0];
+        if (/\.(jpg|jpeg|png|webp|gif)$/i.test(clean)) content = '<img src="' + x.file_url + '" alt="Anexo" style="max-width:240px;height:auto">';
+        else if (/\.(mp4|mov)$/i.test(clean)) content = '<video controls src="' + x.file_url + '" style="width:240px"></video>';
+        else if (/\.(mp3|wav|ogg|m4a)$/i.test(clean) || /-audio\./i.test(clean)) content = '<audio controls src="' + x.file_url + '" style="width:240px"></audio>' + (x.body ? " " + x.body : "");
+        else content = '<a href="' + x.file_url + '" target="_blank" rel="noopener">Abrir anexo</a>';
+      } else { content = (x.body || "").replace(/</g, "&lt;"); }
+      var seen = x.sender === "shop" ? (x.read_at ? " ✓✓" : " ✓") : "";
+      if (x.sender === "customer") {
+        var av = cust && cust.avatar_url ? "<img class='avatar' src='" + cust.avatar_url + "' alt=''>" : "";
+        return "<div class='bubble-row'>" + av + "<p style='margin:0'><strong>Cliente:</strong> " + content + "</p></div>";
+      }
+      return "<div class='bubble-row'><img class='avatar' src='" + shopLogo + "' alt='BRASA'><p style='margin:0'><strong>BRASA:</strong> " + content + " <small>" + seen + "</small></p></div>";
+    }).join("") || "<p>Conversa vazia.</p>";
+  }
   async function loadChats(){
     var r = await sb.from("conversations").select("id, user_id, created_at").order("created_at", {ascending: false}).limit(50);
     var box = document.getElementById("chat-list");
     if (r.error) { box.innerHTML = "<p>Não foi possível carregar os chats.</p>"; return; }
     if (!r.data.length) { box.innerHTML = "<p>Ainda não há conversas.</p>"; return; }
+    var ids = r.data.map(function(c){ return c.user_id; });
+    var pr = await sb.from("profiles").select("id, email, avatar_url").in("id", ids);
+    chatCustomers = {};
+    (pr.data || []).forEach(function(pp){ chatCustomers[pp.id] = pp; });
     box.innerHTML = r.data.map(function(c){
-      return "<div class='p-card'><div class='p-info'><strong>Conversa " + c.id.slice(0, 8) + "</strong><span class='p-meta'>Cliente " + String(c.user_id).slice(0, 8) + "</span></div><div class='p-actions'><button class='btn-outline' data-conv='" + c.id + "' type='button'>Abrir conversa</button></div></div>";
+      var cust = chatCustomers[c.user_id] || {};
+      var av = cust.avatar_url ? "<img class='avatar' src='" + cust.avatar_url + "' alt='' style='width:40px;height:40px'>" : "";
+      return "<div class='p-card'><div class='p-info'>" + av + "<strong>" + (cust.email || ("Cliente " + String(c.user_id).slice(0, 8))) + "</strong><span class='p-meta'>Conversa " + c.id.slice(0, 8) + "</span></div><div class='p-actions'><button class='btn-outline' data-conv='" + c.id + "' data-user='" + c.user_id + "' type='button'>Abrir conversa</button></div></div>";
     }).join("");
     box.querySelectorAll("[data-conv]").forEach(function(b){
-      b.onclick = async function(){
-        selectedConv = b.getAttribute("data-conv");
-        document.getElementById("admin-reply-form").style.display = "block";
-        var m = await sb.from("messages").select("sender, body, file_url, read_at, created_at").eq("conversation_id", selectedConv).order("created_at", {ascending: true}).limit(100);
-        var list = m.data || [];
-        await sb.from("messages").update({read_at: new Date().toISOString()}).eq("conversation_id", selectedConv).eq("sender", "customer").is("read_at", null);
-        box.innerHTML = list.map(function(x){
-          var who = x.sender === "customer" ? "Cliente" : "BRASA";
-          var content = "";
-          if (x.file_url) {
-            var clean = x.file_url.split("?")[0];
-            if (/\.(jpg|jpeg|png|webp|gif)$/i.test(clean)) content = '<img src="' + x.file_url + '" alt="Anexo" style="max-width:240px;height:auto">';
-            else if (/\.(mp4|mov)$/i.test(clean)) content = '<video controls src="' + x.file_url + '" style="width:240px"></video>';
-            else if (/\.(mp3|wav|ogg|m4a)$/i.test(clean) || /-audio\./i.test(clean)) content = '<audio controls src="' + x.file_url + '" style="width:240px"></audio>' + (x.body ? " " + x.body : "");
-            else content = '<a href="' + x.file_url + '" target="_blank" rel="noopener">Abrir anexo</a>';
-          } else { content = (x.body || "").replace(/</g, "&lt;"); }
-          var seen = x.sender === "shop" ? (x.read_at ? " ✓✓" : " ✓") : "";
-          return "<p><strong>" + who + ":</strong> " + content + " <small>" + seen + "</small></p>";
-        }).join("") || "<p>Conversa vazia.</p>";
-      };
+      b.onclick = function(){ openConv(b.getAttribute("data-conv"), chatCustomers[b.getAttribute("data-user")] || {id: b.getAttribute("data-user")}); };
     });
+    if (!chatSubscribed) {
+      chatSubscribed = true;
+      try {
+        sb.channel("brasa-admin-chat")
+          .on("postgres_changes", {event: "INSERT", schema: "public", table: "messages"}, function(){
+            if (selectedConv) openConv(selectedConv, chatCustomers[selectedUserId] || {id: selectedUserId});
+            else loadChats();
+          })
+          .subscribe();
+      } catch (e) {}
+    }
   }
   document.getElementById("admin-reply-form").addEventListener("submit", async function(e){
     e.preventDefault();
@@ -389,7 +435,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     await sb.from("messages").insert({conversation_id: selectedConv, sender: "shop", body: text || null, file_url: fileUrl});
     document.getElementById("admin-reply").value = "";
     document.getElementById("admin-reply-file").value = "";
-    loadChats();
+    openConv(selectedConv, chatCustomers[selectedUserId] || {id: selectedUserId});
   });
   document.getElementById("admin-email").textContent = session.user.email;
   var ps = document.getElementById("p-search");
@@ -413,6 +459,34 @@ document.addEventListener("DOMContentLoaded", async function(){
   loadStats();
   loadProducts();
   loadSettingsForm();
+  loadZones();
+  async function loadZones(){
+    var box = document.getElementById("zone-list");
+    var r = await sb.from("delivery_zones").select("id, name, fee_mt, active").order("sort_order", {ascending: true});
+    if (r.error) { box.innerHTML = "<p>As zonas ainda não existem na base de dados — corre a migração 0008 no Supabase.</p>"; return; }
+    if (!r.data.length) { box.innerHTML = "<p>Ainda não há zonas. Adiciona a primeira abaixo.</p>"; return; }
+    box.innerHTML = r.data.map(function(z){
+      return "<div class='p-card'><div class='p-info'><strong>" + z.name + "</strong><span class='p-meta'>Taxa: " + fmtMT(z.fee_mt) + " · " + (z.active ? "Ativa" : "Desligada") + "</span></div><div class='p-actions'><button class='btn-outline' data-zone-toggle='" + z.id + "' data-active='" + (z.active ? 1 : 0) + "' type='button'>" + (z.active ? "Desligar" : "Ligar") + "</button><button class='btn-outline' data-zone-del='" + z.id + "' type='button'>Apagar</button></div></div>";
+    }).join("");
+    box.querySelectorAll("[data-zone-toggle]").forEach(function(b){
+      b.onclick = async function(){ await sb.from("delivery_zones").update({active: b.getAttribute("data-active") !== "1"}).eq("id", b.getAttribute("data-zone-toggle")); loadZones(); };
+    });
+    box.querySelectorAll("[data-zone-del]").forEach(function(b){
+      b.onclick = async function(){ if (!confirm("Apagar esta zona?")) return; await sb.from("delivery_zones").delete().eq("id", b.getAttribute("data-zone-del")); loadZones(); };
+    });
+  }
+  document.getElementById("zone-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var name = document.getElementById("zone-name").value.trim();
+    var fee = parseInt(document.getElementById("zone-fee").value, 10);
+    if (!name || !Number.isFinite(fee) || fee < 0) return;
+    var res = await sb.from("delivery_zones").insert({name: name, fee_mt: fee, active: true});
+    if (res.error) { show("zone-msg", res.error.message, true); return; }
+    document.getElementById("zone-name").value = "";
+    document.getElementById("zone-fee").value = "";
+    show("zone-msg", "Zona adicionada.", false);
+    loadZones();
+  });
 });
 </script>
 <script>document.querySelector('[data-testid="button-mobile-menu"]').addEventListener('click',function(){var m=document.getElementById('mobile-menu');if(m)m.classList.toggle('hidden');});document.querySelectorAll('#mobile-menu a').forEach(function(a){a.addEventListener('click',function(){document.getElementById('mobile-menu').classList.add('hidden');});});</script>

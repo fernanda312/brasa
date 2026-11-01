@@ -69,6 +69,17 @@
       } catch (e) {}
       return DEFAULT_DELIVERY_FEE_MT;
     },
+    // Delivery zones (Maputo + Matola), admin-editable. Returns [] when
+    // the zones table does not exist yet (pre-migration checkout falls
+    // back to the flat site_settings fee).
+    getDeliveryZones: async function(){
+      if (!sb) return [];
+      try {
+        var r = await sb.from("delivery_zones").select("id, name, fee_mt").eq("active", true).order("sort_order", {ascending: true});
+        if (r.error) return [];
+        return r.data || [];
+      } catch (e) { return []; }
+    },
     cartSubtotal: function(){
       var cart = window.brasa.getCart();
       return cart.reduce(function(sum, item){
