@@ -48,3 +48,65 @@ span[data-testid^="item-price"]{white-space:nowrap;text-align:right;flex-shrink:
 /* Vídeo hero: ocupa o hero inteiro, sem player, sem controlos. */
 .hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 #mobile-menu a{display:block;padding:12px 0}
+
+/* ---- BRASA app pages (conta, carrinho, chat, admin, cardapio) ---- */
+.app-wrap{max-width:1080px;margin:0 auto;padding:48px 20px}
+.app-card{background:hsl(0,0%,12%);border:1px solid hsl(0,0%,25%);border-radius:20px;padding:28px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.app-card h1{font-size:32px;font-weight:400;margin:0 0 12px}
+.app-card h2{font-size:24px;font-weight:400;margin:32px 0 12px}
+.app-card p{color:hsl(30,10%,70%);line-height:1.7}
+.field{width:100%;padding:12px 14px;border:1px solid hsl(0,0%,25%);border-radius:12px;background:#1a1a1a;color:#fff;font-size:16px}
+label.field-label{display:block;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:hsl(30,10%,70%);margin:16px 0 6px}
+.msg{border:1px solid hsl(0,0%,25%);border-radius:12px;padding:14px;margin-top:18px;color:hsl(30,10%,70%);line-height:1.6}
+.msg.err{border-color:#e0311a;color:#ff7a6b}
+.cart-row{display:grid;grid-template-columns:96px 1fr auto;gap:20px;align-items:center;padding:20px 0;border-bottom:1px solid hsl(0,0%,25%)}
+.cart-row img{border-radius:12px;border:1px solid hsl(0,0%,25%)}
+.cart-row h3{margin:0;font-weight:400}
+.cart-row p{color:hsl(30,10%,70%);margin:6px 0}
+.cart-total{font-size:20px;text-align:right;margin:28px 0}
+.chat-fab{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#e0311a,#000);color:#fff;align-items:center;justify-content:center;font-size:24px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:40;text-decoration:none}
+.chatpage{max-width:760px;margin:0 auto;padding:24px 16px 40px}
+.chathead{display:flex;align-items:center;gap:14px;border-bottom:1px solid hsl(0,0%,25%);padding:12px 0}
+.chathead img{width:44px;height:44px}
+.chathead h1{font-size:20px;font-weight:400;margin:0}
+.chathead p{margin:2px 0 0;color:hsl(30,10%,70%);font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.chatlog{border:1px solid hsl(0,0%,25%);border-radius:16px;padding:18px;min-height:420px;display:flex;flex-direction:column;gap:12px;background:hsl(0,0%,12%)}
+.bubble{max-width:78%;padding:10px 14px;border-radius:18px;line-height:1.55;font-size:16px;color:#fff}
+.bubble.mine{align-self:flex-end;background:#7f1d1d;border-bottom-right-radius:4px}
+.bubble.theirs{align-self:flex-start;background:#262626;border-bottom-left-radius:4px}
+.bubble small{display:block;opacity:.7;font-size:11px;margin-top:6px;font-family:Arial,Helvetica,sans-serif}
+.bubble img,.bubble audio{max-width:100%}
+.chatbox{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.chatbox input[type=text]{flex:1;min-width:200px}
+/* Admin, in BRASA's dark look: gradient hero, stats, separated cards. */
+.admin-hero{background:linear-gradient(135deg,#e0311a,#000);color:#fff;border-radius:20px;padding:24px;display:flex;gap:18px;align-items:center}
+.admin-hero img{width:56px;height:auto;flex-shrink:0}
+.admin-hero h1{margin:0;font-size:30px}
+.admin-hero p{margin:10px 0 0;line-height:1.6;color:#fff;opacity:.95}
+.admin-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:20px 0}
+@media(min-width:768px){.admin-stats{grid-template-columns:repeat(5,1fr)}}
+.stat{background:hsl(0,0%,12%);border:1px solid hsl(0,0%,25%);border-radius:16px;padding:18px 14px;text-align:center;border-top:4px solid #e0311a}
+.stat-num{display:block;font-size:24px;color:#fff}
+.stat-label{display:block;margin-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:hsl(30,10%,70%)}
+.admin-card{background:hsl(0,0%,12%);border:1px solid hsl(0,0%,25%);border-radius:20px;padding:24px;margin:0 0 24px}
+.admin-section-title{font-size:26px;font-weight:400;margin:0 0 20px;padding-bottom:14px;border-bottom:2px solid #e0311a;color:#fff}
+.admin-note{background:#2a1210;border-left:4px solid #e0311a;border-radius:12px;padding:16px;line-height:1.7;color:#ddd;margin-bottom:24px}
+.tabs{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0}
+.tabs button{border:1px solid hsl(0,0%,25%);background:hsl(0,0%,12%);color:#fff;padding:12px 20px;border-radius:999px;cursor:pointer;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.tabs button.on{background:linear-gradient(135deg,#e0311a,#000);color:#fff;border-color:transparent}
+.p-card{display:flex;gap:16px;align-items:flex-start;background:hsl(0,0%,10%);border:1px solid hsl(0,0%,25%);border-radius:16px;padding:16px;margin:0 0 14px}
+.p-card .p-thumb{width:96px;height:96px;object-fit:cover;border-radius:12px;flex-shrink:0}
+.p-card .p-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;color:#fff}
+.p-card .p-meta{color:hsl(30,10%,70%);font-size:14px;line-height:1.5}
+.p-card .p-price{color:#ff7a6b;font-size:17px}
+.p-card .p-actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0}
+@media(max-width:640px){.p-card{flex-direction:column}.p-card .p-thumb{width:100%;height:auto}}
+.badge{display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;border-radius:999px;width:fit-content}
+.badge-ok{background:#14532d;color:#bbf7d0}
+.badge-out{background:#7f1d1d;color:#fecaca}
+.badge-none{background:#262626;color:#d4d4d4}
+.st-paid,.st-delivered{background:#14532d;color:#bbf7d0}
+.st-pending_payment{background:#713f12;color:#fde68a}
+.st-preparing{background:#1e3a8a;color:#bfdbfe}
+.st-cancelled{background:#7f1d1d;color:#fecaca}
+.btn-outline{background:transparent;border:1px solid #e0311a;color:#ff7a6b;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;padding:11px 22px;border-radius:999px;cursor:pointer}

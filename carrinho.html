@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#8b0000">
+<link rel="manifest" href="manifest.json">
+<title>BRASA — Carrinho</title>
+<link rel="icon" href="images/brasa-logo.png">
+<link rel="stylesheet" href="css/index-Cs1L1Nxm.css">
+<link rel="stylesheet" href="css/brasa.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/app.js"></script>
+</head>
+<body>
+<nav class="sticky top-0 z-50 bg-background/90 backdrop-blur-lg border-b border-border"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex justify-between items-center h-32"><div class="flex items-center"><span class="logo-badge"><img src="images/brasa-logo.png" alt="BRASA Logo" class="site-logo h-24 w-auto"></span></div><div class="hidden md:block"><div class="flex items-center space-x-8"><a href="index.html" class="text-foreground hover:text-accent transition-colors font-semibold">Início</a><a href="cardapio.html" class="text-foreground hover:text-accent transition-colors font-semibold">Cardápio</a><a href="index.html#menu" class="text-foreground hover:text-accent transition-colors font-semibold">Menu</a><a href="index.html#about" class="text-foreground hover:text-accent transition-colors font-semibold">Sobre</a><a href="index.html#gallery" class="text-foreground hover:text-accent transition-colors font-semibold">Galeria</a><a href="index.html#contact" class="text-foreground hover:text-accent transition-colors font-semibold">Contacto</a><a href="carrinho.html" class="text-foreground hover:text-accent transition-colors font-semibold">Carrinho (<span class="cart-count">0</span>)</a><a href="conta.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-account-link>Conta</a><a href="chat.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-chat-link>Chat</a><a href="admin.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-admin-link style="display:none">Admin</a></div></div><div class="md:hidden"><button data-testid="button-mobile-menu" class="text-foreground" aria-label="Abrir menu">☰</button></div></div><div id="mobile-menu" class="md:hidden hidden border-t border-border px-4 py-4"><div class="flex flex-col gap-4 font-semibold"><a href="index.html">Início</a><a href="cardapio.html">Cardápio</a><a href="index.html#menu">Menu</a><a href="index.html#about">Sobre</a><a href="index.html#gallery">Galeria</a><a href="index.html#contact">Contacto</a><a href="carrinho.html">Carrinho (<span class="cart-count">0</span>)</a><a href="conta.html" data-account-link>Conta</a><a href="chat.html" data-chat-link>Chat</a><a href="admin.html" data-admin-link style="display:none">Admin</a></div></div></div></nav>
+<main class="app-wrap">
+  <div class="app-card">
+    <h1>O seu carrinho</h1>
+    <div id="items"></div>
+    <div class="cart-total" id="total"></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <a class="btn-outline" href="cardapio.html">Continuar a comprar</a>
+      <button class="gradient-bg px-8 py-3 rounded-full text-white font-bold" id="checkout" type="button">Finalizar compra</button>
+    </div>
+    <div id="checkout-box" style="display:none;margin-top:24px;border-top:1px solid hsl(0,0%,25%);padding-top:24px">
+      <h2 style="margin-top:0">Para concluir a compra</h2>
+      <p id="checkout-status">Para pagar, é preciso ter conta. A conta cria-se com email e senha, sem verificação por email.</p>
+      <div id="checkout-table"></div>
+      <p><strong style="color:#fff">O que recebes:</strong> os produtos da tabela, exatamente como estão na foto.</p>
+      <p><strong style="color:#fff">Como recebes:</strong> entrega em Maputo ou levantamento na loja em Maputo.</p>
+      <p><strong style="color:#fff">Quando recebes:</strong> em 1 a 3 dias úteis, depois do pagamento confirmado.</p>
+      <p data-delivery-text style="display:none"></p>
+      <div id="pay-form" style="display:none">
+        <label class="field-label" for="mpesa-phone">Número M-Pesa</label>
+        <input class="field" id="mpesa-phone" type="tel" placeholder="84xxxxxxx ou 85xxxxxxx" inputmode="tel">
+        <p>Só M-Pesa. Confirma o PIN no teu telemóvel. Não há outra forma de pagamento.</p>
+        <button class="gradient-bg px-8 py-3 rounded-full text-white font-bold" id="pay" type="button">Pagar com M-Pesa</button>
+      </div>
+      <div id="pay-error" class="msg err" style="display:none"></div>
+      <p id="pay-done" style="display:none"></p>
+      <div id="pay-chat-link" style="display:none;margin-top:16px"><a class="gradient-bg px-6 py-3 rounded-full text-white font-bold" href="chat.html">Ir para o chat</a></div>
+    </div>
+  </div>
+</main>
+<footer class="bg-card border-t border-border py-12"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center"><span class="logo-badge"><img src="images/brasa-logo.png" alt="BRASA Logo" class="site-logo h-16 w-auto"></span><p class="text-muted-foreground">Hamburgaria · Maputo</p><p class="text-muted-foreground">© 2026 BRASA. Todos os direitos reservados. | Maputo</p></div></footer>
+<script>
+document.addEventListener("DOMContentLoaded", async function(){
+  // The cart belongs to an account. Without an account, there is no
+  // "empty cart" to show — the visitor goes to create an account first
+  // and comes back here after, with the cart remembered.
+  if (window.brasa.configured) {
+    var session = await window.brasa.getSession();
+    if (!session) {
+      window.brasa.savePending("cart", "carrinho.html");
+      location.href = "conta.html";
+      return;
+    }
+  }
+  var box = document.getElementById("items"), totalEl = document.getElementById("total");
+  function changeQty(id, delta){
+    var cart = window.brasa.getCart();
+    var item = cart.find(function(i){ return i.id === id; });
+    if (!item) return;
+    item.qty += delta;
+    if (item.qty <= 0) cart = cart.filter(function(i){ return i.id !== id; });
+    window.brasa.saveCart(cart);
+    render();
+  }
+  function render(){
+    var cart = window.brasa.getCart();
+    if (!cart.length) { box.innerHTML = "<p>O seu carrinho está vazio.</p>"; totalEl.textContent = ""; return; }
+    var total = 0;
+    box.innerHTML = cart.map(function(item){
+      var p = productById(item.id); if (!p) return "";
+      var line = p.price_mt * item.qty; total += line;
+      return '<div class="cart-row"><img src="' + p.image_url + '" alt="' + p.name + '"><div><h3>' + p.name + '</h3><p>' + p.category + '</p><p>Quantidade: ' + item.qty + '</p></div><div style="text-align:right"><p>' + fmtMT(line) + '</p><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button class="btn-outline" data-dec="' + p.id + '" type="button">−</button><button class="btn-outline" data-inc="' + p.id + '" type="button">+</button><button class="btn-outline" data-remove="' + p.id + '" type="button">Tirar</button></div></div></div>';
+    }).join("");
+    totalEl.textContent = "Total: " + fmtMT(total);
+    document.querySelectorAll("[data-remove]").forEach(function(b){
+      b.onclick = function(){ window.brasa.saveCart(window.brasa.getCart().filter(function(i){ return i.id !== b.getAttribute("data-remove"); })); render(); };
+    });
+    document.querySelectorAll("[data-inc]").forEach(function(b){ b.onclick = function(){ changeQty(b.getAttribute("data-inc"), 1); }; });
+    document.querySelectorAll("[data-dec]").forEach(function(b){ b.onclick = function(){ changeQty(b.getAttribute("data-dec"), -1); }; });
+  }
+  render();
+  document.getElementById("checkout").onclick = async function(){
+    var cart = window.brasa.getCart();
+    if (!cart.length) { alert("O seu carrinho está vazio."); return; }
+    document.getElementById("checkout-box").style.display = "block";
+    var pricedTotal = 0;
+    document.getElementById("checkout-table").innerHTML = cart.map(function(item){
+      var p = productById(item.id); if (!p) return "";
+      pricedTotal += p.price_mt * item.qty;
+      return "<p style='display:flex;justify-content:space-between;gap:16px'><span>" + p.name + " × " + item.qty + "</span><strong style='color:#fff'>" + fmtMT(p.price_mt * item.qty) + "</strong></p>";
+    }).join("") + "<p style='display:flex;justify-content:space-between;gap:16px'><span><strong style='color:#fff'>Total a pagar</strong></span><strong style='color:#fff'>" + fmtMT(pricedTotal) + "</strong></p>";
+    if (!window.brasa.configured) {
+      document.getElementById("checkout-status").textContent = "A loja ainda está a ser ligada.";
+      return;
+    }
+    var session = await window.brasa.getSession();
+    if (!session) {
+      window.brasa.savePending("checkout", "carrinho.html");
+      document.getElementById("checkout-status").textContent = "Cria a tua conta primeiro. O carrinho fica guardado.";
+      setTimeout(function(){ location.href = "conta.html"; }, 1200);
+      return;
+    }
+    document.getElementById("checkout-status").textContent = "Conta confirmada.";
+    document.getElementById("pay-form").style.display = "block";
+    document.getElementById("pay").onclick = async function(){
+      var phone = document.getElementById("mpesa-phone").value.trim().replace(/\s+/g, "");
+      var err = document.getElementById("pay-error");
+      if (!/^8[45]\d{7}$/.test(phone)) { err.style.display = "block"; err.textContent = "Introduza um número M-Pesa válido, com 9 dígitos, a começar por 84 ou 85."; return; }
+      err.style.display = "none";
+      try {
+        var orderRes = await window.brasa.supabase.from("orders").insert({
+          user_id: session.user.id, status: "pending_payment", payment_method: "mpesa", phone: phone
+        }).select().single();
+        if (orderRes.error) throw new Error(orderRes.error.message);
+        var order = orderRes.data;
+        var items = cart.map(function(i){
+          var p = productById(i.id);
+          return {order_id: order.id, product_id: p.id, name: p.name, qty: i.qty, unit_price_mt: p.price_mt};
+        });
+        var itemsRes = await window.brasa.supabase.from("order_items").insert(items);
+        if (itemsRes.error) throw new Error(itemsRes.error.message);
+        // Server recalculates the total from trusted prices; the browser
+        // total is never trusted. 503 = payment not configured yet.
+        var fn = await window.brasa.supabase.functions.invoke("create-payment", {
+          body: {order_id: order.id, phone: phone, items: cart}
+        });
+        if (fn.error) throw new Error(fn.error.message || "Pagamento indisponível de momento.");
+        var data = fn.data || {};
+        if (data.error) throw new Error(data.error);
+        document.getElementById("pay-done").style.display = "block";
+        document.getElementById("pay-chat-link").style.display = "block";
+        document.getElementById("pay-done").textContent =
+          "Pedido criado. Confirma o PIN no teu telemóvel. " +
+          "Assim que o pagamento for confirmado, vais para o chat, onde cai o recibo.";
+        window.brasa.saveCart([]);
+        render();
+        var tries = 0;
+        var poll = setInterval(async function(){
+          tries++;
+          if (tries > 60) { clearInterval(poll); return; }
+          var st = await window.brasa.supabase.from("orders").select("status").eq("id", order.id).maybeSingle();
+          if (st.data && st.data.status === "paid") {
+            clearInterval(poll);
+            document.getElementById("pay-done").textContent = "Pagamento confirmado! A abrir o chat com o teu recibo…";
+            setTimeout(function(){ location.href = "chat.html"; }, 1500);
+          }
+        }, 5000);
+      } catch (e) {
+        err.style.display = "block";
+        err.textContent = "O pagamento não pôde ser criado. O pedido fica pendente e não foi cobrado.";
+      }
+    };
+  };
+});
+</script>
+<script>document.querySelector('[data-testid="button-mobile-menu"]').addEventListener('click',function(){var m=document.getElementById('mobile-menu');if(m)m.classList.toggle('hidden');});document.querySelectorAll('#mobile-menu a').forEach(function(a){a.addEventListener('click',function(){document.getElementById('mobile-menu').classList.add('hidden');});});</script>
+<a class="chat-fab" href="chat.html" data-chat-fab style="display:none" aria-label="Abrir chat">💬</a>
+</body>
+</html>

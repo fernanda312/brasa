@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#8b0000">
+<link rel="manifest" href="manifest.json">
+<title>BRASA — Chat</title>
+<link rel="icon" href="images/brasa-logo.png">
+<link rel="stylesheet" href="css/index-Cs1L1Nxm.css">
+<link rel="stylesheet" href="css/brasa.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/app.js"></script>
+</head>
+<body>
+<nav class="sticky top-0 z-50 bg-background/90 backdrop-blur-lg border-b border-border"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex justify-between items-center h-32"><div class="flex items-center"><span class="logo-badge"><img src="images/brasa-logo.png" alt="BRASA Logo" class="site-logo h-24 w-auto"></span></div><div class="hidden md:block"><div class="flex items-center space-x-8"><a href="index.html" class="text-foreground hover:text-accent transition-colors font-semibold">Início</a><a href="cardapio.html" class="text-foreground hover:text-accent transition-colors font-semibold">Cardápio</a><a href="index.html#menu" class="text-foreground hover:text-accent transition-colors font-semibold">Menu</a><a href="index.html#about" class="text-foreground hover:text-accent transition-colors font-semibold">Sobre</a><a href="index.html#gallery" class="text-foreground hover:text-accent transition-colors font-semibold">Galeria</a><a href="index.html#contact" class="text-foreground hover:text-accent transition-colors font-semibold">Contacto</a><a href="carrinho.html" class="text-foreground hover:text-accent transition-colors font-semibold">Carrinho (<span class="cart-count">0</span>)</a><a href="conta.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-account-link>Conta</a><a href="chat.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-chat-link>Chat</a><a href="admin.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-admin-link style="display:none">Admin</a></div></div><div class="md:hidden"><button data-testid="button-mobile-menu" class="text-foreground" aria-label="Abrir menu">☰</button></div></div><div id="mobile-menu" class="md:hidden hidden border-t border-border px-4 py-4"><div class="flex flex-col gap-4 font-semibold"><a href="index.html">Início</a><a href="cardapio.html">Cardápio</a><a href="index.html#menu">Menu</a><a href="index.html#about">Sobre</a><a href="index.html#gallery">Galeria</a><a href="index.html#contact">Contacto</a><a href="carrinho.html">Carrinho (<span class="cart-count">0</span>)</a><a href="conta.html" data-account-link>Conta</a><a href="chat.html" data-chat-link>Chat</a><a href="admin.html" data-admin-link style="display:none">Admin</a></div></div></div></nav>
+<main>
+  <div class="chatpage">
+    <div class="chathead">
+      <img class="site-logo" src="images/brasa-logo.png" alt="Logótipo BRASA">
+      <div><h1>BRASA</h1><p>Chat da loja</p></div>
+    </div>
+    <div class="app-card" id="group-banner" style="display:none;margin:24px 0">
+      <p>Entra no grupo para receber as novidades em primeira mão.</p>
+      <p><a class="gradient-bg px-6 py-3 rounded-full text-white font-bold" data-group-link href="#">Entrar no grupo</a></p>
+    </div>
+    <div class="chatlog" id="chatlog"><p style="color:#777">A carregar a conversa…</p></div>
+    <form class="chatbox" id="chatform">
+      <input class="field" type="text" id="chat-text" placeholder="Escreva a sua mensagem…" autocomplete="off">
+      <input type="file" id="chat-file" accept="image/*,video/*,audio/*,application/pdf" style="max-width:220px">
+      <button class="gradient-bg px-6 py-3 rounded-full text-white font-bold" type="submit">Enviar</button>
+      <button class="btn-outline" id="audio-btn" type="button">Gravar áudio</button>
+    </form>
+    <p style="color:#777;line-height:1.6">Anexos até 5 MB. O chat só abre depois da conta, para a conversa ficar guardada na sua conta.</p>
+    <div class="msg" id="chat-msg" style="display:none"></div>
+  </div>
+</main>
+<footer class="bg-card border-t border-border py-12"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center"><span class="logo-badge"><img src="images/brasa-logo.png" alt="BRASA Logo" class="site-logo h-16 w-auto"></span><p class="text-muted-foreground">Hamburgaria · Maputo</p><p class="text-muted-foreground">© 2026 BRASA. Todos os direitos reservados. | Maputo</p></div></footer>
+<script>
+document.addEventListener("DOMContentLoaded", async function(){
+  var log = document.getElementById("chatlog"), msg = document.getElementById("chat-msg");
+  // Chat only after account: intent → account → chat, no step is lost.
+  if (!window.brasa.configured) { log.innerHTML = "<p>O chat ainda está a ser ligado pela loja.</p>"; return; }
+  var session = await window.brasa.getSession();
+  if (!session) {
+    window.brasa.savePending("chat", "chat.html");
+    location.href = "conta.html";
+    return;
+  }
+  // The group banner only appears when the admin set a real group link
+  // in admin > Definições da loja; no link is invented here.
+  var settings = await window.brasa.getSettings();
+  if (settings && settings.whatsapp_group_url) document.getElementById("group-banner").style.display = "block";
+  var convId = null;
+  async function ensureConversation(){
+    var r = await window.brasa.supabase.from("conversations").select("id").eq("user_id", session.user.id).order("created_at", {ascending: false}).limit(1).maybeSingle();
+    if (r.data) return r.data.id;
+    var c = await window.brasa.supabase.from("conversations").insert({user_id: session.user.id}).select().single();
+    return c.data ? c.data.id : null;
+  }
+  function timeOf(ts){
+    var d = new Date(ts);
+    return d.toLocaleTimeString("pt-PT", {hour: "2-digit", minute: "2-digit"});
+  }
+  function renderFile(url, body){
+    var clean = url.split("?")[0];
+    if (/-audio\./i.test(clean)) return '<audio controls src="' + url + '" style="width:280px"></audio>' + (body ? "<div>" + body.replace(/</g, "&lt;") + "</div>" : "");
+    if (/\.(jpg|jpeg|png|webp|gif)$/i.test(clean)) return '<img src="' + url + '" alt="Anexo" style="max-width:280px;height:auto">';
+    if (/\.(mp4|mov|webm)$/i.test(clean)) return '<video controls src="' + url + '" style="width:280px;max-height:320px"></video>';
+    if (/\.(mp3|wav|ogg|m4a)$/i.test(clean)) return '<audio controls src="' + url + '" style="width:280px"></audio>';
+    return '<a href="' + url + '" target="_blank" rel="noopener">Abrir anexo</a>';
+  }
+  async function loadMessages(){
+    if (!convId) return;
+    var r = await window.brasa.supabase.from("messages").select("*").eq("conversation_id", convId).order("created_at", {ascending: true});
+    if (r.error) { log.innerHTML = "<p>Não foi possível carregar a conversa.</p>"; return; }
+    if (!r.data.length) { log.innerHTML = "<p style='color:#777'>Olá! Escreva a sua mensagem — a BRASA responde aqui.</p>"; return; }
+    log.innerHTML = r.data.map(function(m){
+      var mine = m.sender === "customer";
+      var body = "";
+      if (m.file_url) body = renderFile(m.file_url, m.body);
+      else body = m.body ? m.body.replace(/</g, "&lt;") : "";
+      // Seen ticks, WhatsApp style: ✓ sent, ✓✓ seen by the other side.
+      var seen = mine ? (m.read_at ? " ✓✓" : " ✓") : "";
+      return '<div class="bubble ' + (mine ? "mine" : "theirs") + '">' + body + "<small>" + timeOf(m.created_at) + seen + "</small></div>";
+    }).join("");
+    log.scrollTop = log.scrollHeight;
+    // Mark the shop's messages as seen now that the customer opened the chat.
+    await window.brasa.supabase.from("messages").update({read_at: new Date().toISOString()}).eq("conversation_id", convId).eq("sender", "shop").is("read_at", null);
+  }
+  convId = await ensureConversation();
+  await loadMessages();
+  setInterval(loadMessages, 5000);
+  document.getElementById("chatform").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var text = document.getElementById("chat-text").value.trim();
+    var file = document.getElementById("chat-file").files[0];
+    if (!text && !file) return;
+    var fileUrl = null;
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { msg.style.display = "block"; msg.className = "msg err"; msg.textContent = "O anexo não pode passar de 5 MB."; return; }
+      var path = session.user.id + "/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      var up = await window.brasa.supabase.storage.from("chat-attachments").upload(path, file);
+      if (up.error) { msg.style.display = "block"; msg.className = "msg err"; msg.textContent = "Não foi possível enviar o anexo: " + up.error.message; return; }
+      var pub = window.brasa.supabase.storage.from("chat-attachments").getPublicUrl(path);
+      fileUrl = pub.data.publicUrl;
+    }
+    var ins = await window.brasa.supabase.from("messages").insert({conversation_id: convId, sender: "customer", body: text || null, file_url: fileUrl});
+    if (ins.error) { msg.style.display = "block"; msg.className = "msg err"; msg.textContent = ins.error.message; return; }
+    document.getElementById("chat-text").value = "";
+    document.getElementById("chat-file").value = "";
+    await loadMessages();
+  });
+  // Audio: MediaRecorder, with the duration measured from the real
+  // recording, not from the audio file header (which often shows none).
+  var recorder = null, chunks = [], recordStartedAt = 0;
+  var audioBtn = document.getElementById("audio-btn");
+  audioBtn.onclick = async function(){
+    if (recorder) {
+      recorder.stop();
+      audioBtn.textContent = "Gravar áudio";
+      recorder = null;
+      return;
+    }
+    try {
+      var stream = await navigator.mediaDevices.getUserMedia({audio: true});
+      recorder = new MediaRecorder(stream); chunks = [];
+      recorder.ondataavailable = function(e){ if (e.data.size) chunks.push(e.data); };
+      recorder.onstop = async function(){
+        var secs = Math.max(1, Math.round((Date.now() - recordStartedAt) / 1000));
+        var mm = Math.floor(secs / 60), ss = secs % 60;
+        var durationText = "Áudio · " + mm + ":" + (ss < 10 ? "0" : "") + ss;
+        var blob = new Blob(chunks, {type: "audio/webm"});
+        if (blob.size > 5 * 1024 * 1024) { msg.style.display = "block"; msg.className = "msg err"; msg.textContent = "O áudio não pode passar de 5 MB."; return; }
+        var path = session.user.id + "/" + Date.now() + "-audio.webm";
+        var up = await window.brasa.supabase.storage.from("chat-attachments").upload(path, blob);
+        if (up.error) { msg.style.display = "block"; msg.className = "msg err"; msg.textContent = up.error.message; return; }
+        var pub = window.brasa.supabase.storage.from("chat-attachments").getPublicUrl(path);
+        await window.brasa.supabase.from("messages").insert({conversation_id: convId, sender: "customer", body: durationText, file_url: pub.data.publicUrl});
+        await loadMessages();
+      };
+      recordStartedAt = Date.now();
+      recorder.start();
+      audioBtn.textContent = "Parar gravação";
+    } catch (e) {
+      msg.style.display = "block"; msg.className = "msg err"; msg.textContent = "Não foi possível aceder ao microfone.";
+    }
+  };
+});
+</script>
+<script>document.querySelector('[data-testid="button-mobile-menu"]').addEventListener('click',function(){var m=document.getElementById('mobile-menu');if(m)m.classList.toggle('hidden');});document.querySelectorAll('#mobile-menu a').forEach(function(a){a.addEventListener('click',function(){document.getElementById('mobile-menu').classList.add('hidden');});});</script>
+<a class="chat-fab" href="chat.html" data-chat-fab style="display:none" aria-label="Abrir chat">💬</a>
+</body>
+</html>

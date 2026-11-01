@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#8b0000">
+<link rel="manifest" href="manifest.json">
+<title>BRASA — Admin</title>
+<link rel="icon" href="images/brasa-logo.png">
+<link rel="stylesheet" href="css/index-Cs1L1Nxm.css">
+<link rel="stylesheet" href="css/brasa.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/app.js"></script>
+</head>
+<body>
+<nav class="sticky top-0 z-50 bg-background/90 backdrop-blur-lg border-b border-border"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex justify-between items-center h-32"><div class="flex items-center"><span class="logo-badge"><img src="images/brasa-logo.png" alt="BRASA Logo" class="site-logo h-24 w-auto"></span></div><div class="hidden md:block"><div class="flex items-center space-x-8"><a href="index.html" class="text-foreground hover:text-accent transition-colors font-semibold">Início</a><a href="cardapio.html" class="text-foreground hover:text-accent transition-colors font-semibold">Cardápio</a><a href="carrinho.html" class="text-foreground hover:text-accent transition-colors font-semibold">Carrinho (<span class="cart-count">0</span>)</a><a href="conta.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-account-link>Conta</a><a href="chat.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-chat-link>Chat</a></div></div><div class="md:hidden"><button data-testid="button-mobile-menu" class="text-foreground" aria-label="Abrir menu">☰</button></div></div><div id="mobile-menu" class="md:hidden hidden border-t border-border px-4 py-4"><div class="flex flex-col gap-4 font-semibold"><a href="index.html">Início</a><a href="cardapio.html">Cardápio</a><a href="carrinho.html">Carrinho (<span class="cart-count">0</span>)</a><a href="conta.html" data-account-link>Conta</a><a href="chat.html" data-chat-link>Chat</a></div></div></div></nav>
+<main class="app-wrap">
+  <div class="app-card" id="denied">
+    <h1>Painel admin</h1>
+    <p>A verificar o acesso…</p>
+  </div>
+  <div style="max-width:1080px;display:none" id="admin-box">
+    <div class="admin-hero">
+      <img class="site-logo" src="images/brasa-logo.png" alt="Logótipo BRASA">
+      <div><h1>Painel admin</h1>
+      <p>Mude logo, vídeo do hero, promoções, textos, preços e produtos, apague e mova — sem depender de quem vendeu o site. As fotos e o vídeo são sempre por ficheiro, nunca por link.</p>
+      <p>Conta admin: <strong id="admin-email"></strong> · Loja: <strong>BRASA · Maputo</strong></p></div>
+    </div>
+    <div class="admin-stats">
+      <div class="stat"><span class="stat-num" id="stat-products">—</span><span class="stat-label">Produtos</span></div>
+      <div class="stat"><span class="stat-num" id="stat-orders">—</span><span class="stat-label">Encomendas</span></div>
+      <div class="stat"><span class="stat-num" id="stat-paid">—</span><span class="stat-label">Total pago</span></div>
+      <div class="stat"><span class="stat-num" id="stat-customers">—</span><span class="stat-label">Clientes</span></div>
+      <div class="stat"><span class="stat-num" id="stat-chats">—</span><span class="stat-label">Conversas</span></div>
+    </div>
+    <div class="tabs">
+      <button type="button" data-tab="products" class="on">Produtos</button>
+      <button type="button" data-tab="texts">Textos · Logo · Hero · Promoções</button>
+      <button type="button" data-tab="orders">Encomendas</button>
+      <button type="button" data-tab="customers">Clientes</button>
+      <button type="button" data-tab="chats">Chats</button>
+      <button type="button" data-tab="settings">Definições da loja</button>
+    </div>
+    <div id="tab-products" class="admin-card">
+      <h2 class="admin-section-title">Produtos</h2>
+      <input class="field" id="p-search" placeholder="Pesquisar produto por nome ou categoria…">
+      <div id="product-list" style="margin-top:16px"></div>
+      <h3 style="font-weight:400;margin-top:32px;color:#fff">Novo produto / editar</h3>
+      <form id="product-form">
+        <input type="hidden" id="p-id">
+        <label class="field-label" for="p-name">Nome</label><input class="field" id="p-name" required>
+        <label class="field-label" for="p-cat">Categoria</label><input class="field" id="p-cat" placeholder="Hambúrgueres da Brasa">
+        <label class="field-label" for="p-price">Preço em MT (vazio = preço a confirmar; produtos sem preço não pagam online)</label><input class="field" id="p-price" type="number" min="0" step="1">
+        <label class="field-label" for="p-stock">Stock (vazio = sem controlo de stock; 0 = esgotado; ao pagar, o stock baixa sozinho)</label><input class="field" id="p-stock" type="number" min="0" step="1">
+        <label class="field-label" for="p-desc">Descrição (só o que se vê na foto)</label><textarea class="field" id="p-desc" rows="3"></textarea>
+        <label class="field-label" for="p-file">Foto (ficheiro — nunca link)</label><input class="field" id="p-file" type="file" accept="image/*">
+        <label style="color:#fff"><input id="p-published" type="checkbox" checked style="width:auto"> Publicado</label>
+        <div style="margin-top:16px"><button class="gradient-bg px-8 py-3 rounded-full text-white font-bold" type="submit">Guardar produto</button></div>
+      </form>
+      <div class="msg" id="p-msg" style="display:none"></div>
+    </div>
+    <div id="tab-texts" class="admin-card" style="display:none">
+      <h2 class="admin-section-title">Textos · Logo · Hero · Promoções</h2>
+      <form id="texts-form">
+        <label class="field-label" for="s-hero-title">Título do hero</label><input class="field" id="s-hero-title">
+        <label class="field-label" for="s-hero-text">Texto do hero</label><textarea class="field" id="s-hero-text" rows="3"></textarea>
+        <label class="field-label" for="s-store-text">Texto da loja física e online</label><textarea class="field" id="s-store-text" rows="3"></textarea>
+        <label class="field-label" for="s-how-text">Como comprar (passos)</label><textarea class="field" id="s-how-text" rows="3"></textarea>
+        <label class="field-label" for="s-delivery-text">Texto de entrega</label><textarea class="field" id="s-delivery-text" rows="3"></textarea>
+        <label class="field-label" for="s-trust-text">Texto de confiança (loja real, pagamento, recibo)</label><textarea class="field" id="s-trust-text" rows="3"></textarea>
+        <label class="field-label" for="s-promo-text">Texto das promoções (o que passa na faixa, sem preços inventados)</label><input class="field" id="s-promo-text">
+        <label class="field-label" for="s-logo-file">Logótipo (ficheiro)</label><input class="field" id="s-logo-file" type="file" accept="image/*">
+        <label class="field-label" for="s-hero-video-file">Vídeo do hero (ficheiro, até 50 MB — o vídeo atual fica até ser substituído)</label><input class="field" id="s-hero-video-file" type="file" accept="video/*">
+        <label class="field-label" for="s-promo1-file">Foto da promoção 1 (ficheiro)</label><input class="field" id="s-promo1-file" type="file" accept="image/*">
+        <label class="field-label" for="s-promo2-file">Foto da promoção 2 (ficheiro)</label><input class="field" id="s-promo2-file" type="file" accept="image/*">
+        <label class="field-label" for="s-promo3-file">Foto da promoção 3 (ficheiro)</label><input class="field" id="s-promo3-file" type="file" accept="image/*">
+        <div style="margin-top:16px"><button class="gradient-bg px-8 py-3 rounded-full text-white font-bold" type="submit">Guardar textos e ficheiros</button></div>
+      </form>
+      <div class="msg" id="s-msg" style="display:none"></div>
+    </div>
+    <div id="tab-orders" class="admin-card" style="display:none">
+      <h2 class="admin-section-title">Encomendas</h2>
+      <label class="field-label" for="o-filter">Filtrar por estado</label><select class="field" id="o-filter"><option value="">Todas</option><option value="pending_payment">A aguardar pagamento</option><option value="paid">Pagas</option><option value="preparing">A preparar</option><option value="delivered">Entregues</option><option value="cancelled">Canceladas</option></select>
+      <div id="order-list" style="margin-top:16px"></div>
+    </div>
+    <div id="tab-customers" class="admin-card" style="display:none">
+      <h2 class="admin-section-title">Clientes</h2>
+      <p>Todos os clientes com conta, com email, WhatsApp/telefone e o que cada um comprou. Se a lista está vazia, a conta admin precisa do acesso is_admin no Supabase.</p>
+      <div id="customer-list"></div>
+    </div>
+    <div id="tab-chats" class="admin-card" style="display:none">
+      <h2 class="admin-section-title">Chats</h2>
+      <div id="chat-list"></div>
+      <form id="admin-reply-form" style="display:none;margin-top:20px">
+        <label class="field-label" for="admin-reply">Responder na conversa selecionada</label>
+        <input class="field" id="admin-reply" placeholder="Escreva a resposta…">
+        <label class="field-label" for="admin-reply-file">Anexo (imagem, vídeo, áudio ou ficheiro, até 5 MB)</label><input class="field" id="admin-reply-file" type="file" accept="image/*,video/*,audio/*,application/pdf">
+        <div style="margin-top:12px"><button class="gradient-bg px-8 py-3 rounded-full text-white font-bold" type="submit">Enviar resposta</button></div>
+      </form>
+    </div>
+    <div id="tab-settings" class="admin-card" style="display:none">
+      <h2 class="admin-section-title">Definições da loja</h2>
+      <div class="admin-note"><strong>Pagamentos M-Pesa</strong><br>As credenciais de pagamento NÃO ficam aqui nem no código. Ficam só nos segredos das Edge Functions no Supabase, com estes 3 nomes: ZUMBO_API_KEY, ZUMBO_MERCHANT_ID e ZUMBO_WEBHOOK_SECRET. Sem elas, o pagamento mostra aviso e não finge pagar.</div>
+      <form id="settings-form">
+        <label class="field-label" for="st-whatsapp">Link do WhatsApp (troque pelo link real — o comprador muda isto aqui)</label><input class="field" id="st-whatsapp" placeholder="https://wa.me/25884xxxxxxx">
+        <label class="field-label" for="st-group">Link do grupo (formato de grupo; troque pelo link real)</label><input class="field" id="st-group">
+        <label class="field-label" for="st-delay">Botão do grupo: mostrar depois de quantos segundos no site</label><input class="field" id="st-delay" type="number" min="10" step="1">
+        <label class="field-label" for="st-scroll">Botão do grupo: mostrar a partir de que percentagem de scroll</label><input class="field" id="st-scroll" type="number" min="10" max="100" step="1">
+        <div style="margin-top:16px"><button class="gradient-bg px-8 py-3 rounded-full text-white font-bold" type="submit">Guardar definições</button></div>
+      </form>
+      <div class="msg" id="st-msg" style="display:none"></div>
+    </div>
+  </div>
+</main>
+<footer class="bg-card border-t border-border py-12"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center"><span class="logo-badge"><img src="images/brasa-logo.png" alt="BRASA Logo" class="site-logo h-16 w-auto"></span><p class="text-muted-foreground">Hamburgaria · Maputo</p><p class="text-muted-foreground">© 2026 BRASA. Todos os direitos reservados. | Maputo</p></div></footer>
+<script>
+document.addEventListener("DOMContentLoaded", async function(){
+  var denied = document.getElementById("denied");
+  if (!window.brasa.configured) { denied.innerHTML = "<h1>Painel admin</h1><p>A loja ainda está a ser ligada.</p>"; return; }
+  var session = await window.brasa.getSession();
+  if (!session) { window.brasa.savePending("admin", "admin.html"); location.href = "conta.html"; return; }
+  // Admin gate: admin email (set by the owner in js/config.js) OR is_admin
+  // on the profile. No password is ever written in code.
+  var prof = await window.brasa.supabase.from("profiles").select("is_admin").eq("id", session.user.id).maybeSingle();
+  var adminEmail = (window.BRASA_CONFIG.ADMIN_EMAIL || "").toLowerCase();
+  var isAdmin = (prof.data && prof.data.is_admin) || (adminEmail && adminEmail !== "ADMIN_EMAIL_POR_DEFINIR" && session.user.email.toLowerCase() === adminEmail);
+  if (!isAdmin) {
+    denied.innerHTML = "<h1>Painel admin</h1><p>Sem acesso. Estás com a conta " + session.user.email + ", e o admin só abre para a conta admin.</p><button class='btn-outline' onclick='window.brasa.signOut()'>Sair</button>";
+    return;
+  }
+  denied.style.display = "none";
+  document.getElementById("admin-box").style.display = "block";
+  var sb = window.brasa.supabase;
+  function show(id, text, err){
+    var el = document.getElementById(id);
+    el.style.display = "block"; el.textContent = text; el.className = err ? "msg err" : "msg";
+  }
+  document.querySelectorAll("[data-tab]").forEach(function(btn){
+    btn.onclick = function(){
+      document.querySelectorAll("[data-tab]").forEach(function(b){ b.classList.remove("on"); });
+      btn.classList.add("on");
+      ["products", "texts", "orders", "customers", "chats", "settings"].forEach(function(t){
+        document.getElementById("tab-" + t).style.display = (t === btn.getAttribute("data-tab")) ? "block" : "none";
+      });
+      if (btn.getAttribute("data-tab") === "orders") loadOrders();
+      if (btn.getAttribute("data-tab") === "customers") loadCustomers();
+      if (btn.getAttribute("data-tab") === "chats") loadChats();
+    };
+  });
+  async function uploadFile(bucket, file, maxMb){
+    if (!file) return null;
+    var limit = (maxMb || 5) * 1024 * 1024;
+    if (file.size > limit) throw new Error("O ficheiro não pode passar de " + (maxMb || 5) + " MB.");
+    var path = Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    var up = await sb.storage.from(bucket).upload(path, file);
+    if (up.error) throw up.error;
+    return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  }
+  async function loadProducts(){
+    var r = await sb.from("products").select("*").order("sort_order", {ascending: true});
+    var box = document.getElementById("product-list");
+    if (r.error) { box.innerHTML = "<p>Não foi possível carregar os produtos.</p>"; return; }
+    if (!r.data.length) { box.innerHTML = "<p>Ainda não há produtos na base de dados — os produtos da migração inicial aparecem aqui depois de correr a migração.</p>"; return; }
+    var q = (document.getElementById("p-search") ? document.getElementById("p-search").value.trim().toLowerCase() : "");
+    var list = q ? r.data.filter(function(p){ return (p.name + " " + (p.category || "") + " " + p.slug).toLowerCase().indexOf(q) !== -1; }) : r.data;
+    if (!list.length) { box.innerHTML = "<p>Nenhum produto com essa pesquisa.</p>"; return; }
+    box.innerHTML = list.map(function(p){
+      var stock = (p.stock_qty === null || p.stock_qty === undefined) ? "<span class='badge badge-none'>Sem controlo</span>" : (p.stock_qty === 0 ? "<span class='badge badge-out'>Esgotado</span>" : "<span class='badge badge-ok'>Stock: " + p.stock_qty + "</span>");
+      var img = p.image_url ? "<img src='" + p.image_url + "' alt='' class='p-thumb'>" : "";
+      return "<div class='p-card'>" + img + "<div class='p-info'><strong>" + p.name + "</strong><span class='p-meta'>" + (p.category || "") + " · " + p.slug + " · Ordem " + p.sort_order + "</span><span class='p-price'>" + (p.price_mt ? fmtMT(p.price_mt) : "Preço a confirmar") + "</span> " + stock + "</div><div class='p-actions'>" +
+        "<button class='btn-outline' data-edit='" + p.id + "' type='button'>Editar</button> " +
+        "<button class='btn-outline' data-up='" + p.id + "' type='button'>Subir</button> " +
+        "<button class='btn-outline' data-down='" + p.id + "' type='button'>Descer</button> " +
+        "<button class='btn-outline' data-del='" + p.id + "' type='button'>Apagar</button></div></div>";
+    }).join("");
+    box.querySelectorAll("[data-edit]").forEach(function(b){
+      b.onclick = function(){
+        var p = r.data.find(function(x){ return String(x.id) === b.getAttribute("data-edit"); });
+        document.getElementById("p-id").value = p.id;
+        document.getElementById("p-name").value = p.name;
+        document.getElementById("p-cat").value = p.category || "";
+        document.getElementById("p-price").value = p.price_mt || "";
+        document.getElementById("p-stock").value = (p.stock_qty === null || p.stock_qty === undefined) ? "" : p.stock_qty;
+        document.getElementById("p-desc").value = p.description || "";
+        document.getElementById("p-published").checked = !!p.published;
+      };
+    });
+    box.querySelectorAll("[data-del]").forEach(function(b){
+      b.onclick = async function(){
+        if (!confirm("Apagar este produto?")) return;
+        await sb.from("products").delete().eq("id", b.getAttribute("data-del"));
+        loadProducts();
+      };
+    });
+    async function move(id, dir){
+      var list = r.data;
+      var i = list.findIndex(function(x){ return String(x.id) === id; });
+      var j = i + dir;
+      if (i < 0 || j < 0 || j >= list.length) return;
+      var a = list[i], b2 = list[j];
+      await sb.from("products").update({sort_order: b2.sort_order}).eq("id", a.id);
+      await sb.from("products").update({sort_order: a.sort_order}).eq("id", b2.id);
+      loadProducts();
+    }
+    box.querySelectorAll("[data-up]").forEach(function(b){ b.onclick = function(){ move(b.getAttribute("data-up"), -1); }; });
+    box.querySelectorAll("[data-down]").forEach(function(b){ b.onclick = function(){ move(b.getAttribute("data-down"), 1); }; });
+  }
+  document.getElementById("product-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+    try {
+      var file = document.getElementById("p-file").files[0];
+      var url = file ? await uploadFile("brasa-media", file, 5) : null;
+      var row = {
+        name: document.getElementById("p-name").value.trim(),
+        category: document.getElementById("p-cat").value.trim(),
+        price_mt: document.getElementById("p-price").value ? parseInt(document.getElementById("p-price").value, 10) : null,
+        stock_qty: document.getElementById("p-stock").value === "" ? null : parseInt(document.getElementById("p-stock").value, 10),
+        description: document.getElementById("p-desc").value.trim(),
+        published: document.getElementById("p-published").checked
+      };
+      if (url) row.image_url = url;
+      var id = document.getElementById("p-id").value;
+      var res;
+      if (id) res = await sb.from("products").update(row).eq("id", id);
+      else {
+        var max = await sb.from("products").select("sort_order").order("sort_order", {ascending: false}).limit(1).maybeSingle();
+        row.sort_order = (max.data ? max.data.sort_order : 0) + 1;
+        res = await sb.from("products").insert(row);
+      }
+      if (res.error) throw res.error;
+      show("p-msg", "Produto guardado.", false);
+      e.target.reset(); document.getElementById("p-id").value = "";
+      loadProducts();
+    } catch (err) { show("p-msg", err.message, true); }
+  });
+  async function loadSettingsForm(){
+    var s = await window.brasa.getSettings();
+    if (!s) return;
+    document.getElementById("s-hero-title").value = s.hero_title || "";
+    document.getElementById("s-hero-text").value = s.hero_text || "";
+    document.getElementById("s-store-text").value = s.store_text || "";
+    document.getElementById("s-how-text").value = s.how_text || "";
+    document.getElementById("s-delivery-text").value = s.delivery_text || "";
+    document.getElementById("s-trust-text").value = s.trust_text || "";
+    document.getElementById("s-promo-text").value = s.promo_text || "";
+    document.getElementById("st-group").value = s.whatsapp_group_url || "";
+    document.getElementById("st-whatsapp").value = s.whatsapp_url || "";
+    document.getElementById("st-delay").value = s.group_banner_delay_seconds || 90;
+    document.getElementById("st-scroll").value = s.group_banner_scroll_percent || 70;
+  }
+  document.getElementById("texts-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+    try {
+      var logo = document.getElementById("s-logo-file").files[0];
+      var heroVideo = document.getElementById("s-hero-video-file").files[0];
+      var promo1 = document.getElementById("s-promo1-file").files[0];
+      var promo2 = document.getElementById("s-promo2-file").files[0];
+      var promo3 = document.getElementById("s-promo3-file").files[0];
+      var row = {
+        hero_title: document.getElementById("s-hero-title").value.trim(),
+        hero_text: document.getElementById("s-hero-text").value.trim(),
+        store_text: document.getElementById("s-store-text").value.trim(),
+        how_text: document.getElementById("s-how-text").value.trim(),
+        delivery_text: document.getElementById("s-delivery-text").value.trim(),
+        trust_text: document.getElementById("s-trust-text").value.trim(),
+        promo_text: document.getElementById("s-promo-text").value.trim()
+      };
+      if (logo) row.logo_url = await uploadFile("brasa-media", logo, 5);
+      if (heroVideo) row.hero_video_url = await uploadFile("brasa-media", heroVideo, 50);
+      if (promo1) row.promo1_url = await uploadFile("brasa-media", promo1, 5);
+      if (promo2) row.promo2_url = await uploadFile("brasa-media", promo2, 5);
+      if (promo3) row.promo3_url = await uploadFile("brasa-media", promo3, 5);
+      var res = await sb.from("site_settings").update(row).eq("id", 1);
+      if (res.error) throw res.error;
+      show("s-msg", "Textos e ficheiros guardados — o site passa a usar o novo logótipo, vídeo do hero e fotos das promoções.", false);
+    } catch (err) { show("s-msg", err.message, true); }
+  });
+  document.getElementById("settings-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+    try {
+      var row = {
+        whatsapp_url: document.getElementById("st-whatsapp").value.trim(),
+        whatsapp_group_url: document.getElementById("st-group").value.trim(),
+        group_banner_delay_seconds: parseInt(document.getElementById("st-delay").value, 10) || 90,
+        group_banner_scroll_percent: parseInt(document.getElementById("st-scroll").value, 10) || 70
+      };
+      var res = await sb.from("site_settings").update(row).eq("id", 1);
+      if (res.error) throw res.error;
+      show("st-msg", "Definições guardadas.", false);
+    } catch (err) { show("st-msg", err.message, true); }
+  });
+  async function loadCustomers(){
+    var box = document.getElementById("customer-list");
+    var profs = await sb.from("profiles").select("id, email, whatsapp, created_at").order("created_at", {ascending: false}).limit(200);
+    if (profs.error) { box.innerHTML = "<p>Não foi possível carregar os clientes.</p>"; return; }
+    if (!profs.data.length) { box.innerHTML = "<p>Ainda não há clientes.</p>"; return; }
+    var orders = await sb.from("orders").select("id, user_id, status, total_mt, phone").order("created_at", {ascending: false});
+    var items = await sb.from("order_items").select("order_id, name, qty").in("order_id", (orders.data || []).map(function(o){ return o.id; }));
+    var itemsByOrder = {}; (items.data || []).forEach(function(i){ (itemsByOrder[i.order_id] = itemsByOrder[i.order_id] || []).push(i); });
+    box.innerHTML = (profs.data || []).map(function(p){
+      var mine = (orders.data || []).filter(function(o){ return o.user_id === p.id; });
+      var paid = mine.filter(function(o){ return o.status === "paid" || o.status === "preparing" || o.status === "delivered"; });
+      var totalPaid = paid.reduce(function(s, o){ return s + (o.total_mt || 0); }, 0);
+      var phone = p.whatsapp || (mine[0] && mine[0].phone) || "";
+      var wa = phone ? "<a class='btn-outline' href='https://wa.me/258" + phone.replace(/\D/g, "").replace(/^258/, "") + "' target='_blank' rel='noopener'>WhatsApp</a>" : "";
+      var bought = [];
+      mine.forEach(function(o){ (itemsByOrder[o.id] || []).forEach(function(i){ bought.push(i.name + " × " + i.qty + (o.status === "paid" || o.status === "preparing" || o.status === "delivered" ? "" : " (" + o.status + ")")); }); });
+      return "<div class='p-card'><div class='p-info'><strong>" + (p.email || "—") + "</strong><span class='p-meta'>WhatsApp/telefone: " + (phone || "—") + "</span><span class='p-meta'>Encomendas: " + mine.length + " · Pagas: " + paid.length + " · Total pago: " + (totalPaid ? fmtMT(totalPaid) : "—") + "</span><span class='p-meta'>Comprou: " + (bought.length ? bought.join(", ") : "Ainda não comprou.") + "</span></div><div class='p-actions'>" + wa + "</div></div>";
+    }).join("");
+  }
+  async function loadOrders(){
+    var r = await sb.from("orders").select("id, user_id, status, total_mt, phone, provider_reference, created_at").order("created_at", {ascending: false}).limit(50);
+    var box = document.getElementById("order-list");
+    if (r.error) { box.innerHTML = "<p>Não foi possível carregar as encomendas.</p>"; return; }
+    if (!r.data.length) { box.innerHTML = "<p>Ainda não há encomendas.</p>"; return; }
+    var profs = await sb.from("profiles").select("id, email").in("id", r.data.map(function(o){ return o.user_id; }));
+    var emailById = {}; (profs.data || []).forEach(function(p){ emailById[p.id] = p.email; });
+    var items = await sb.from("order_items").select("order_id, name, qty, unit_price_mt").in("order_id", r.data.map(function(o){ return o.id; }));
+    var itemsByOrder = {}; (items.data || []).forEach(function(i){ (itemsByOrder[i.order_id] = itemsByOrder[i.order_id] || []).push(i); });
+    var f = document.getElementById("o-filter") ? document.getElementById("o-filter").value : "";
+    var ords = f ? r.data.filter(function(o){ return o.status === f; }) : r.data;
+    if (!ords.length) { box.innerHTML = "<p>Nenhuma encomenda com esse estado.</p>"; return; }
+    var statusPt = {"pending_payment": "A aguardar pagamento", "paid": "Paga", "preparing": "A preparar", "delivered": "Entregue", "cancelled": "Cancelada"};
+    box.innerHTML = ords.map(function(o){
+      var bought = (itemsByOrder[o.id] || []).map(function(i){ return i.name + " × " + i.qty; }).join(", ") || "—";
+      return "<div class='p-card'><div class='p-info'><strong>Encomenda " + o.id.slice(0, 8) + "</strong><span class='p-meta'>" + (emailById[o.user_id] || o.user_id.slice(0, 8)) + " · " + (o.phone || "") + "</span><span class='p-meta'>Comprou: " + bought + "</span><span class='p-price'>" + (o.total_mt ? fmtMT(o.total_mt) : "—") + "</span> <span class='badge st-" + o.status + "'>" + (statusPt[o.status] || o.status) + "</span><span class='p-meta'>Ref: " + (o.provider_reference || "—") + "</span></div><div class='p-actions'><select class='field' data-status='" + o.id + "'><option value='pending_payment'>A aguardar pagamento</option><option value='paid'>Paga</option><option value='preparing'>A preparar</option><option value='delivered'>Entregue</option><option value='cancelled'>Cancelada</option></select></div></div>";
+    }).join("");
+    box.querySelectorAll("[data-status]").forEach(function(sel){
+      var id = sel.getAttribute("data-status");
+      var cur = r.data.find(function(o){ return o.id === id; });
+      if (cur) sel.value = cur.status;
+      sel.onchange = async function(){ await sb.from("orders").update({status: sel.value}).eq("id", id); loadOrders(); };
+    });
+  }
+  var selectedConv = null;
+  async function loadChats(){
+    var r = await sb.from("conversations").select("id, user_id, created_at").order("created_at", {ascending: false}).limit(50);
+    var box = document.getElementById("chat-list");
+    if (r.error) { box.innerHTML = "<p>Não foi possível carregar os chats.</p>"; return; }
+    if (!r.data.length) { box.innerHTML = "<p>Ainda não há conversas.</p>"; return; }
+    box.innerHTML = r.data.map(function(c){
+      return "<div class='p-card'><div class='p-info'><strong>Conversa " + c.id.slice(0, 8) + "</strong><span class='p-meta'>Cliente " + String(c.user_id).slice(0, 8) + "</span></div><div class='p-actions'><button class='btn-outline' data-conv='" + c.id + "' type='button'>Abrir conversa</button></div></div>";
+    }).join("");
+    box.querySelectorAll("[data-conv]").forEach(function(b){
+      b.onclick = async function(){
+        selectedConv = b.getAttribute("data-conv");
+        document.getElementById("admin-reply-form").style.display = "block";
+        var m = await sb.from("messages").select("sender, body, file_url, read_at, created_at").eq("conversation_id", selectedConv).order("created_at", {ascending: true}).limit(100);
+        var list = m.data || [];
+        await sb.from("messages").update({read_at: new Date().toISOString()}).eq("conversation_id", selectedConv).eq("sender", "customer").is("read_at", null);
+        box.innerHTML = list.map(function(x){
+          var who = x.sender === "customer" ? "Cliente" : "BRASA";
+          var content = "";
+          if (x.file_url) {
+            var clean = x.file_url.split("?")[0];
+            if (/\.(jpg|jpeg|png|webp|gif)$/i.test(clean)) content = '<img src="' + x.file_url + '" alt="Anexo" style="max-width:240px;height:auto">';
+            else if (/\.(mp4|mov)$/i.test(clean)) content = '<video controls src="' + x.file_url + '" style="width:240px"></video>';
+            else if (/\.(mp3|wav|ogg|m4a)$/i.test(clean) || /-audio\./i.test(clean)) content = '<audio controls src="' + x.file_url + '" style="width:240px"></audio>' + (x.body ? " " + x.body : "");
+            else content = '<a href="' + x.file_url + '" target="_blank" rel="noopener">Abrir anexo</a>';
+          } else { content = (x.body || "").replace(/</g, "&lt;"); }
+          var seen = x.sender === "shop" ? (x.read_at ? " ✓✓" : " ✓") : "";
+          return "<p><strong>" + who + ":</strong> " + content + " <small>" + seen + "</small></p>";
+        }).join("") || "<p>Conversa vazia.</p>";
+      };
+    });
+  }
+  document.getElementById("admin-reply-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var text = document.getElementById("admin-reply").value.trim();
+    var file = document.getElementById("admin-reply-file").files[0];
+    if ((!text && !file) || !selectedConv) return;
+    var fileUrl = null;
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { alert("O anexo não pode passar de 5 MB."); return; }
+      fileUrl = await uploadFile("chat-attachments", file, 5);
+    }
+    await sb.from("messages").insert({conversation_id: selectedConv, sender: "shop", body: text || null, file_url: fileUrl});
+    document.getElementById("admin-reply").value = "";
+    document.getElementById("admin-reply-file").value = "";
+    loadChats();
+  });
+  document.getElementById("admin-email").textContent = session.user.email;
+  var ps = document.getElementById("p-search");
+  if (ps) ps.addEventListener("input", loadProducts);
+  var of = document.getElementById("o-filter");
+  if (of) of.addEventListener("change", loadOrders);
+  async function loadStats(){
+    try {
+      var pc = await sb.from("products").select("id", {count: "exact", head: true});
+      var oc = await sb.from("orders").select("id, status, total_mt");
+      var cc = await sb.from("profiles").select("id", {count: "exact", head: true});
+      var vc = await sb.from("conversations").select("id", {count: "exact", head: true});
+      document.getElementById("stat-products").textContent = (pc.count === null || pc.count === undefined) ? "—" : pc.count;
+      document.getElementById("stat-orders").textContent = (oc.data || []).length;
+      var paid = (oc.data || []).filter(function(o){ return o.status === "paid" || o.status === "preparing" || o.status === "delivered"; }).reduce(function(s, o){ return s + (o.total_mt || 0); }, 0);
+      document.getElementById("stat-paid").textContent = paid ? fmtMT(paid) : "0 MT";
+      document.getElementById("stat-customers").textContent = (cc.count === null || cc.count === undefined) ? "—" : cc.count;
+      document.getElementById("stat-chats").textContent = (vc.count === null || vc.count === undefined) ? "—" : vc.count;
+    } catch (e) {}
+  }
+  loadStats();
+  loadProducts();
+  loadSettingsForm();
+});
+</script>
+<script>document.querySelector('[data-testid="button-mobile-menu"]').addEventListener('click',function(){var m=document.getElementById('mobile-menu');if(m)m.classList.toggle('hidden');});document.querySelectorAll('#mobile-menu a').forEach(function(a){a.addEventListener('click',function(){document.getElementById('mobile-menu').classList.add('hidden');});});</script>
+<a class="chat-fab" href="chat.html" data-chat-fab style="display:none" aria-label="Abrir chat">💬</a>
+</body>
+</html>

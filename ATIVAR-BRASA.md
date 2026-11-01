@@ -1,0 +1,46 @@
+# Ativar a BRASA — passos por ordem
+
+O código já está pronto, na pasta da BRASA. Falta só ligar as contas da BRASA.
+Nada disto usa a conta de outro site. Tudo é só da BRASA.
+
+## 1. Criar o projeto no Supabase
+- Abrir supabase.com e criar um projeto novo com o nome BRASA.
+- Guardar o endereço do projeto (Project URL) e a chave pública (a chave que pode ser partilhada, nunca a chave secreta).
+
+## 2. Correr as 6 migrações, por esta ordem
+Na pasta supabase/migrations, na ordem:
+1. 20261101000001_brasa_core.sql
+2. 20261101000002_brasa_rls.sql
+3. 20261101000003_brasa_seed.sql
+4. 20261101000004_brasa_storage.sql
+5. 20261101000005_brasa_delivery.sql
+6. 20261101000006_brasa_chat_stock_whatsapp.sql
+
+## 3. Conta e admin
+- Desligar "Confirm email" no Supabase (senão a conta não entra).
+- Criar a conta do admin no próprio site, em Conta, com email e palavra-passe.
+- Pôr is_admin = true nessa conta, no editor SQL do Supabase.
+- Dizer à Muse: o Project URL, a chave pública e o email do admin.
+  A Muse põe esses 3 valores em js/config.js. A chave pública pode ser partilhada; a palavra-passe nunca.
+
+## 4. Pagamento M-Pesa (conta só da BRASA)
+- Criar uma conta de pagamento só para a BRASA, com o número M-Pesa da BRASA.
+- Nos segredos das Edge Functions, pôr só estas 3 chaves, tu mesma:
+  ZUMBO_API_KEY, ZUMBO_MERCHANT_ID, ZUMBO_WEBHOOK_SECRET
+- Nunca pôr estas chaves no código, no GitHub nem no chat.
+  Ninguém precisa que as envies: és tu que as escreves no Supabase.
+
+## 5. Ligar as funções
+- Publicar as 2 funções: create-payment e zumbopay-webhook.
+- Apontar o aviso de pagamento (webhook) do painel de pagamento para:
+  <Project URL>/functions/v1/zumbopay-webhook
+- Depois disto, a Muse liga o site ao projeto e testa.
+
+## 6. Teste final
+- Teste pequeno com M-Pesa: comprar 1 produto barato, confirmar
+  que a encomenda fica paga, o recibo aparece no chat e o stock baixa.
+- No admin, confirmar que a encomenda, o cliente e a conversa aparecem.
+
+## Ainda falta decidir / mandar
+- Domínio da BRASA (ainda não escolhido).
+- Grupo e WhatsApp da loja (põe no admin, em Definições da loja, quando tiveres os links reais).

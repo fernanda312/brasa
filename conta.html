@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#8b0000">
+<link rel="manifest" href="manifest.json">
+<title>BRASA — A minha conta</title>
+<link rel="icon" href="images/brasa-logo.png">
+<link rel="stylesheet" href="css/index-Cs1L1Nxm.css">
+<link rel="stylesheet" href="css/brasa.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/app.js"></script>
+</head>
+<body>
+<nav class="sticky top-0 z-50 bg-background/90 backdrop-blur-lg border-b border-border"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex justify-between items-center h-32"><div class="flex items-center"><span class="logo-badge"><img src="images/brasa-logo.png" alt="BRASA Logo" class="site-logo h-24 w-auto"></span></div><div class="hidden md:block"><div class="flex items-center space-x-8"><a href="index.html" class="text-foreground hover:text-accent transition-colors font-semibold">Início</a><a href="cardapio.html" class="text-foreground hover:text-accent transition-colors font-semibold">Cardápio</a><a href="index.html#menu" class="text-foreground hover:text-accent transition-colors font-semibold">Menu</a><a href="index.html#about" class="text-foreground hover:text-accent transition-colors font-semibold">Sobre</a><a href="index.html#gallery" class="text-foreground hover:text-accent transition-colors font-semibold">Galeria</a><a href="index.html#contact" class="text-foreground hover:text-accent transition-colors font-semibold">Contacto</a><a href="carrinho.html" class="text-foreground hover:text-accent transition-colors font-semibold">Carrinho (<span class="cart-count">0</span>)</a><a href="conta.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-account-link>Conta</a><a href="chat.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-chat-link>Chat</a><a href="admin.html" class="text-foreground hover:text-accent transition-colors font-semibold" data-admin-link style="display:none">Admin</a></div></div><div class="md:hidden"><button data-testid="button-mobile-menu" class="text-foreground" aria-label="Abrir menu">☰</button></div></div><div id="mobile-menu" class="md:hidden hidden border-t border-border px-4 py-4"><div class="flex flex-col gap-4 font-semibold"><a href="index.html">Início</a><a href="cardapio.html">Cardápio</a><a href="index.html#menu">Menu</a><a href="index.html#about">Sobre</a><a href="index.html#gallery">Galeria</a><a href="index.html#contact">Contacto</a><a href="carrinho.html">Carrinho (<span class="cart-count">0</span>)</a><a href="conta.html" data-account-link>Conta</a><a href="chat.html" data-chat-link>Chat</a><a href="admin.html" data-admin-link style="display:none">Admin</a></div></div></div></nav>
+<main class="app-wrap">
+  <div class="app-card" id="auth-box">
+    <h1 id="auth-title">Entrar na conta</h1>
+    <p>Se não tens conta, ela é criada automaticamente aqui.</p>
+    <form id="auth-form">
+      <label class="field-label" for="email">Email</label>
+      <input class="field" id="email" type="email" required autocomplete="email">
+      <label class="field-label" for="password">Senha</label>
+      <input class="field" id="password" type="password" required autocomplete="current-password">
+      <div style="margin-top:20px">
+        <button class="gradient-bg px-8 py-3 rounded-full text-white font-bold" id="btn-signin" type="submit">Entrar</button>
+      </div>
+    </form>
+    <div class="msg" id="auth-msg" style="display:none"></div>
+  </div>
+  <div class="app-card" id="account-box" style="display:none">
+    <h1>O meu perfil</h1>
+    <p>Conta ativa.</p>
+    <p id="account-email" style="color:#fff"></p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px">
+      <a class="gradient-bg px-6 py-3 rounded-full text-white font-bold" href="chat.html">Abrir o chat</a>
+      <a class="btn-outline" href="carrinho.html">Ver o carrinho</a>
+      <button class="btn-outline" id="btn-signout" type="button">Sair</button>
+    </div>
+    <h2>Histórico de compras</h2>
+    <p>Aqui vês o que compraste, o que já está pago e o recibo no chat.</p>
+    <div id="my-orders"><p>A carregar…</p></div>
+  </div>
+</main>
+<footer class="bg-card border-t border-border py-12"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center"><span class="logo-badge"><img src="images/brasa-logo.png" alt="BRASA Logo" class="site-logo h-16 w-auto"></span><p class="text-muted-foreground">Hamburgaria · Maputo</p><p class="text-muted-foreground">© 2026 BRASA. Todos os direitos reservados. | Maputo</p></div></footer>
+<script>
+document.addEventListener("DOMContentLoaded", async function(){
+  var msg = document.getElementById("auth-msg");
+  function showMsg(text, isErr){
+    msg.style.display = "block"; msg.textContent = text;
+    msg.className = isErr ? "msg err" : "msg";
+  }
+  function resumePending(){
+    try {
+      var add = JSON.parse(localStorage.getItem("brasa-pending-add") || "null");
+      if (add && add.id) { window.brasa.addToCart(add.id, add.qty || 1); }
+      localStorage.removeItem("brasa-pending-add");
+    } catch (e) {}
+    var p = window.brasa.takePending();
+    if (p && p.target) location.href = p.target;
+  }
+  if (!window.brasa.configured) {
+    showMsg("A conta ainda está a ser ligada pela loja.", false);
+  }
+  var session = await window.brasa.getSession();
+  if (session) {
+    await window.brasa.supabase.from("profiles").upsert({id: session.user.id, email: session.user.email});
+    document.getElementById("auth-box").style.display = "none";
+    document.getElementById("account-box").style.display = "block";
+    document.getElementById("account-email").textContent = "Email: " + session.user.email;
+    var r = await window.brasa.supabase.from("orders").select("id, status, total_mt, created_at").eq("user_id", session.user.id).order("created_at", {ascending: false}).limit(20);
+    var box = document.getElementById("my-orders");
+    if (r.error) { box.innerHTML = "<p>Não foi possível carregar as encomendas.</p>"; }
+    else if (!r.data.length) { box.innerHTML = "<p>Ainda não tem encomendas.</p>"; }
+    else {
+      var statusPt = {"pending_payment": "A aguardar pagamento", "paid": "Pago", "preparing": "A preparar", "delivered": "Entregue", "cancelled": "Cancelado"};
+      var items = await window.brasa.supabase.from("order_items").select("order_id, name, qty").in("order_id", r.data.map(function(o){ return o.id; }));
+      var byOrder = {}; (items.data || []).forEach(function(i){ (byOrder[i.order_id] = byOrder[i.order_id] || []).push(i); });
+      box.innerHTML = r.data.map(function(o){
+        var bought = (byOrder[o.id] || []).map(function(i){ return i.name + " × " + i.qty; }).join(", ") || "—";
+        var receipt = (o.status === "paid" || o.status === "preparing" || o.status === "delivered")
+          ? "<br>Recibo: " + (o.total_mt ? fmtMT(o.total_mt) : "—") + ", pago por M-Pesa. <a href='chat.html'>Ver recibo no chat</a>"
+          : "";
+        return "<p style='border-bottom:1px solid hsl(0,0%,25%);padding:12px 0'>Encomenda " + o.id.slice(0, 8) + " — " + (statusPt[o.status] || o.status) + "<br>" + bought + "<br>" + (o.total_mt ? fmtMT(o.total_mt) : "a confirmar") + receipt + "</p>";
+      }).join("");
+    }
+    document.getElementById("btn-signout").onclick = function(){ window.brasa.signOut(); };
+    return;
+  }
+  document.getElementById("auth-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var email = document.getElementById("email").value.trim();
+    var password = document.getElementById("password").value;
+    if (!window.brasa.configured) { showMsg("A conta ainda está a ser ligada pela loja.", true); return; }
+    var r = await window.brasa.signIn(email, password);
+    if (r.notFound) {
+      var c = await window.brasa.signUp(email, password);
+      if (c.error) { showMsg(c.error, true); return; }
+      if (c.needsOwnerStep) { showMsg("Conta criada. Tente entrar novamente.", true); return; }
+      showMsg("Conta criada automaticamente.", false);
+      setTimeout(resumePending, 600);
+      return;
+    }
+    if (r.error) { showMsg(r.error, true); return; }
+    showMsg("Sessão iniciada.", false);
+    setTimeout(resumePending, 600);
+  });
+});
+</script>
+<script>document.querySelector('[data-testid="button-mobile-menu"]').addEventListener('click',function(){var m=document.getElementById('mobile-menu');if(m)m.classList.toggle('hidden');});document.querySelectorAll('#mobile-menu a').forEach(function(a){a.addEventListener('click',function(){document.getElementById('mobile-menu').classList.add('hidden');});});</script>
+<a class="chat-fab" href="chat.html" data-chat-fab style="display:none" aria-label="Abrir chat">💬</a>
+</body>
+</html>
